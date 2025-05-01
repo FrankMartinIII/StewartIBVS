@@ -14,12 +14,25 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+
+#Get libusb
+find_path(LIBUSB_INCLUDE_DIR
+  NAMES libusb.h
+  PATH_SUFFIXES "include" "libusb" "libusb-1.0"
+)
+
+find_library(LIBUSB_LIBRARY
+  NAMES usb-1.0
+  PATH_SUFFIXES "lib" "lib32" "lib64"
+)
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -57,6 +70,12 @@ find_package(Eigen3 REQUIRED)
 #   Message2.msg
 # )
 
+add_message_files(
+  FILES
+  LinearActCmd.msg
+  LinearActCmd_Vector.msg
+)
+
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
@@ -76,6 +95,11 @@ find_package(Eigen3 REQUIRED)
 #   DEPENDENCIES
 #   sensor_msgs#   std_msgs
 # )
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -107,9 +131,9 @@ find_package(Eigen3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include include/vs_stewart/
 #  LIBRARIES vs_stewart
-#  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
+  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -121,15 +145,24 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
+  include/vs_stewart
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
+  ${LIBUSB_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/vs_stewart.cpp
 # )
+
+add_library(firgelli STATIC
+  src/firgelli.cpp
+)
+add_library(inverse_kinematics 
+  src/inverse_kinematics.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -143,8 +176,14 @@ include_directories(
 
 add_executable(camera_setup src/camera_setup.cpp)
 add_executable(ibvs src/ibvs.cpp)
+add_executable(ik_ros_node src/ik_ros_node.cpp)
+add_executable(stew_driver_node src/stew_driver_node.cpp)
+add_executable(lac_feedback_node src/lac_feedback_node.cpp)
+
+add_executable(testIKClass src/testIKClass.cpp)
 target_link_libraries(camera_setup ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(ibvs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
+target_link_libraries(ik_ros_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,6 +199,20 @@ target_link_libraries(ibvs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBR
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(firgelli
+  ${LIBUSB_LIBRARY}
+)
+
+#EXAMPLE for later 
+target_link_libraries(stew_driver_node
+  ${catkin_LIBRARIES}
+  firgelli
+)
+
+target_link_libraries(lac_feedback_node
+  ${catkin_LIBRARIES}
+  firgelli
+)
 
 #############
 ## Install ##
@@ -174,6 +227,10 @@ target_link_libraries(ibvs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBR
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+
+catkin_install_python(PROGRAMS src/test_pos_pub.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
