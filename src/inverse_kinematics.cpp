@@ -193,6 +193,16 @@ class IK
             if(iter == maxIter-1)
             {
                 std::cout << "Forward kinematics did not converge" << std::endl;
+                std::cout << "Leg lens" << std::endl;
+                for(double j: legLengthsFromFeedback)
+                {
+                    std::cout << j << "  ";
+                }
+                std::cout << "Initial pose estimate" << std::endl;
+                for(double j: initialPoseEst)
+                {
+                    std::cout << j << "  ";
+                }
             }
         }
 

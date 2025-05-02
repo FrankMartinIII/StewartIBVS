@@ -177,6 +177,7 @@ add_library(inverse_kinematics
 add_executable(camera_setup src/camera_setup.cpp)
 add_executable(ibvs src/ibvs.cpp)
 add_executable(ik_ros_node src/ik_ros_node.cpp)
+add_executable(fk_ros_node src/fk_ros_node.cpp)
 add_executable(stew_driver_node src/stew_driver_node.cpp)
 add_executable(lac_feedback_node src/lac_feedback_node.cpp)
 
@@ -184,6 +185,7 @@ add_executable(testIKClass src/testIKClass.cpp)
 target_link_libraries(camera_setup ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(ibvs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
 target_link_libraries(ik_ros_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
+target_link_libraries(fk_ros_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

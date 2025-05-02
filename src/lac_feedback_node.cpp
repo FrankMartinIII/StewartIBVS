@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     ROS_INFO("Starting lac_feedback_node");
     ros::NodeHandle nh;
     pub = nh.advertise<std_msgs::Float64MultiArray>("vs_stewart/legFeedback", 100);
-    ros::Rate loop_rate(30);
+    ros::Rate loop_rate(0.01);
     rosPubMsg.data.resize(6);
 
     int count = 0;
