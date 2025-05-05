@@ -23,12 +23,18 @@ std::vector<double> latestLegFB(6);
 std::vector<double> latestPoseCmd(6);
 bool pendingFKReq = false;
 
+double convertCommandToLength(double command)
+{
+    double length = ((command / 1023) * 30) + 121.5;
+    return length;
+}
+
 void legCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
 {
     //Save the latest leg lengths
     for(int i = 0 ; i < latestLegFB.size() ; i++)
     {
-        latestLegFB[i] = msg->data[i];
+        latestLegFB[i] = convertCommandToLength(msg->data[i]);
     }
     //Do the forward kinematics
     std::vector<double> realPose = ik.forwardKinematics(latestLegFB, latestPoseCmd);
@@ -90,7 +96,7 @@ int main(int argc, char** argv)
     latestPoseCmd[4] = 0;
     latestPoseCmd[5] = 0;
     //I temporarily changed legFeedback to legOperation for testing- FRANK, change this back
-    feedbackSub = nh->subscribe("vs_stewart/legOperation", 100, legCallback);
+    feedbackSub = nh->subscribe("vs_stewart/legFeedback", 100, legCallback);
     poseSub = nh->subscribe("vs_stewart/platformCmd", 100, poseCallback);
     pub = nh->advertise<geometry_msgs::Twist>("vs_stewart/fkPose", 100, true);
 

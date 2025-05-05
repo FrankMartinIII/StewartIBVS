@@ -17,7 +17,8 @@ const int maxExtensionCommand = 950;
 
 int convertLengthToCommand(double length)
 {
-    int command = (31.91 * (length-121.5)) - 16.01;
+    //int command = (31.91 * (length-121.5)) - 16.01;
+    int command = ((length - 121.5) / 30) * 1023;
     return command;
 }
 
