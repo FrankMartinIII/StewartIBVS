@@ -297,6 +297,7 @@ int Firgelli::WriteCode(int location, int value)
 
 int Firgelli::WriteCodeToRank(unsigned int rank, int location, int value)
 {
+	printf("WriteCodeToRank\n");
         if(rank < 0 || rank > 6)
         {
         	printf("Illegal rank value\n");

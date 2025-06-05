@@ -9,6 +9,7 @@
 Firgelli firgelli;
 int numFound;
 ros::Subscriber sub;
+ros::Publisher pub;
 std_msgs::Float64MultiArray rosPubMsg;
 
 //Old vals were good for motor one but bounds are inconsistent across motors
@@ -25,7 +26,7 @@ int convertLengthToCommand(double length)
 void initStewartPlatform()
 {
     firgelli.SetDebug(1);
-    firgelli.OpenAll();
+    numFound = firgelli.OpenAll();
     //numFound = firgelli.OpenAll(); Maybe I should fix this later. OpenAll doesnt have a return rn
 
     /* This logic should be moved to be handled by sending an initial message setting the platform pose
@@ -47,6 +48,7 @@ void initStewartPlatform()
 
 void callback(const std_msgs::Float64MultiArray::ConstPtr& msg)
 {
+    ROS_INFO("Callback activated");
     bool flagBadMove = false; //True if the legs cannot move into the asked position.
     std::vector<int> commands;
     commands.resize(msg->data.size());
@@ -83,6 +85,7 @@ void callback(const std_msgs::Float64MultiArray::ConstPtr& msg)
         for(int rank = 0 ; rank < numFound ; rank++)
         {
             //Move each leg
+            ROS_INFO("Moving the legs");
             firgelli.WriteCodeToRank(rank, 32, commands[rank]);
         }
     }
@@ -90,6 +93,15 @@ void callback(const std_msgs::Float64MultiArray::ConstPtr& msg)
     else
     {
         ROS_INFO("Aborting this position command");
+    }
+}
+
+void getFeedback()
+{
+    for(int i = 0 ; i < numFound ; i++)
+    {
+        //Write 0x10 or 16 to read the value
+        rosPubMsg.data[i] = firgelli.WriteCodeToRank(i, 16, 0);
     }
 }
 
@@ -113,6 +125,19 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "stew_driver_node");
     ros::NodeHandle nh;
     sub = nh.subscribe("vs_stewart/legOperation", 100, callback);
+    pub = nh.advertise<std_msgs::Float64MultiArray>("vs_stewart/legFeedback", 100);
+    ros::Rate loop_rate(10);
 
-    ros::spin();
+    while(ros::ok())
+    {
+        getFeedback();
+
+        pub.publish(rosPubMsg);
+
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
+
+    
+    minimizeStewartPlatform();
 }
