@@ -15,7 +15,7 @@ class IK
         const int bottomPlateHoleRadius = 59; //Radius of the plate going through the center of the holes
         const int topPlateHoleRadius = 41;
         const double attachmentPointOffset = 11;
-        const double homeHeight = 133.8792459 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
+        const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
         
 
         double bottomPlateXPoints[6];
