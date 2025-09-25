@@ -1,4 +1,5 @@
-#include "inverse_kinematics.cpp"
+//#include "inverse_kinematics.cpp"
+#include "kinematics.cpp"
 #include<ros/ros.h>
 #include<ros/console.h>
 #include<stdlib.h>

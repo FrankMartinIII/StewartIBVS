@@ -14,9 +14,11 @@ class IK
         const int topPlateDegreeVals[6] = {20, 100, 140, 220, 260, 340}; //How many degrees the hole is on the top plate away from the y axis
         const int bottomPlateHoleRadius = 59; //Radius of the plate going through the center of the holes
         const int topPlateHoleRadius = 41;
-        const double attachmentPointOffset = 11;
-        const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
-        
+        //const double attachmentPointOffset = 11;
+        //const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
+        const double botAttachmentPointOffset = 20;
+        const double topAttachmentPointOffset = 14;
+        const double homeHeight = 135.0413717 + botAttachmentPointOffset + topAttachmentPointOffset;
 
         double bottomPlateXPoints[6];
         double bottomPlateYPoints[6];
@@ -85,7 +87,8 @@ class IK
                 double pa2 = topPlateYPoints[motorNum];
                 //double pa3 = 0; //Z val is zero so third col of rotation matrix is actually irrelevant and a waste of cals
                 //Set pa3 to home position leg length
-                double pa3 = - attachmentPointOffset;
+                //double pa3 = - attachmentPointOffset
+                double pa3 = - topAttachmentPointOffset;
                 //double pa3 = 0;
 
                 double a1 = x_trans + (rotationMatrix[0][0] * pa1 + rotationMatrix[0][1] * pa2 + rotationMatrix[0][2] * pa3);
@@ -97,7 +100,8 @@ class IK
                 //How to compute height_hexapod? the length of linear motor is length + strake/2.
                 //please correct it.
                 //L should be a vector - a vector of the x y z coordinates of where the leg is attached to the base
-                double l_vector[3] = {a1 - bottomPlateXPoints[motorNum] , a2 - bottomPlateYPoints[motorNum], a3 - attachmentPointOffset}; //Saying bottom plate connections are at positive 11 on the z-axis
+                //double l_vector[3] = {a1 - bottomPlateXPoints[motorNum] , a2 - bottomPlateYPoints[motorNum], a3 - attachmentPointOffset}; //Saying bottom plate connections are at positive 11 on the z-axis
+                double l_vector[3] = {a1 - bottomPlateXPoints[motorNum] , a2 - bottomPlateYPoints[motorNum], a3 - botAttachmentPointOffset}; //Saying bottom plate connections are at positive 11 on the z-axis
                 //double l_vector[3] = {a1 - bottomPlateXPoints[motorNum] , a2 - bottomPlateYPoints[motorNum], a3 - 0};
 
                 //Now find length of the leg by doing dot product of L with itself and square rooting the value.
@@ -135,14 +139,16 @@ class IK
         for(int i = 0 ; i < 6 ; i++)
         {
             //Top attachment point in platform frame
-            Eigen::Vector3d p_i(topPlateXPoints[i], topPlateYPoints[i], -attachmentPointOffset);
+            //Eigen::Vector3d p_i(topPlateXPoints[i], topPlateYPoints[i], -attachmentPointOffset);
+            Eigen::Vector3d p_i(topPlateXPoints[i], topPlateYPoints[i], -topAttachmentPointOffset);
             //Eigen::Vector3d p_i(topPlateXPoints[i], topPlateYPoints[i], 0);
 
             // Transform to world frame
             Eigen::Vector3d a_i = Eigen::Vector3d(xtrans, ytrans, ztrans) + R * p_i;
 
             // Bottom attachment in world frame
-            Eigen::Vector3d b_i(bottomPlateXPoints[i], bottomPlateYPoints[i], attachmentPointOffset);
+            //Eigen::Vector3d b_i(bottomPlateXPoints[i], bottomPlateYPoints[i], attachmentPointOffset);
+            Eigen::Vector3d b_i(bottomPlateXPoints[i], bottomPlateYPoints[i], botAttachmentPointOffset);
             //Eigen::Vector3d b_i(bottomPlateXPoints[i], bottomPlateYPoints[i], 0);
 
             // Leg vector

@@ -160,8 +160,12 @@ include_directories(
 add_library(firgelli STATIC
   src/firgelli.cpp
 )
+#add_library(inverse_kinematics 
+#  src/inverse_kinematics.cpp
+#)
+
 add_library(inverse_kinematics 
-  src/inverse_kinematics.cpp
+  src/kinematics.cpp
 )
 
 ## Add cmake target dependencies of the library

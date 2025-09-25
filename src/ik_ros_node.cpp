@@ -1,4 +1,5 @@
-#include "inverse_kinematics.cpp"
+//#include "inverse_kinematics.cpp"
+#include "kinematics.cpp"
 #include<ros/ros.h>
 #include<ros/console.h>
 #include<stdlib.h>
@@ -21,7 +22,7 @@ void callback(const geometry_msgs::Twist::ConstPtr& msg)
     double roll = msg->angular.x;
     double pitch = msg->angular.y;
     double yaw = msg->angular.z;
-    ik.calcLegLengths(xtrans, ytrans, ztrans, roll, pitch, yaw);
+    ik.inverseKinematics(xtrans, ytrans, ztrans, roll, pitch, yaw);
     legLens = ik.getLegLengths();
 
     for(int i = 0 ; i < legLens.size() ; i++)
