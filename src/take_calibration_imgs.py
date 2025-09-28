@@ -2,12 +2,12 @@ import cv2
 import os
 import time
 
-#Capture parameters
-CAMERA_ID = 0
-CHESSBOARD_SIZE = (9,6)
-OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images'))
 
-def capture_calibration_images():
+def capture_calibration_images_single_cam(cameraNum):
+    #Capture parameters
+    CAMERA_ID = cameraNum
+    CHESSBOARD_SIZE = (10,7)
+    OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images_home_webcam', str(cameraNum)))
     #press c to capture image
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.makedirs(OUTPUT_DIRECTORY)
@@ -74,4 +74,5 @@ def capture_calibration_images():
 
 
 if __name__ == "__main__":
-    capture_calibration_images()
+    capture_calibration_images_single_cam(0)
+    #capture_calibration_images_single_cam(2)

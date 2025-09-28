@@ -4,13 +4,9 @@ import glob
 import os
 import pickle
 
-CHESSBOARD_SIZE = (9,6)
-SQUARE_SIZE = 2.36 #Size of squares in cm
-CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images/*.jpg'))
-OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params'))
-SAVE_UNDISTORTED = True
 
-def calibrate_camera():
+
+def calibrate_camera(cameraNum):
     '''
     Returns
     ret: RMS reprojection error
@@ -19,7 +15,28 @@ def calibrate_camera():
     rotVecs: rotation vectors (omega)
     transVecs: translation vectors
     '''
+    CHESSBOARD_SIZE = (10,7)
+    #SQUARE_SIZE = 2.36 #Size of squares in cm
+    SQUARE_SIZE = 15
+    folderStr = 'calibration_images_home_webcam/' + str(cameraNum) + '/*.jpg'
+    #CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images/*.jpg'))
+    CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', folderStr))
+    #CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'FrankCalib/frames/J2/*.png'))
+    OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam', str(cameraNum)))
+    SAVE_UNDISTORTED = True
 
+    if cameraNum == 5:
+        CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'FrankCalib/frames/D2/*.png'))
+        CHESSBOARD_SIZE = (7,4)
+    #if cameraNum == 6:
+    #    CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'FrankCalib/frames/J2/*.png'))
+    #    CHESSBOARD_SIZE = (7,4)
+    if cameraNum == 7:
+        CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images/kaggle0/*.png'))
+        CHESSBOARD_SIZE = (11,7)
+    if cameraNum == 8:
+        CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images/kaggle0/*.png'))
+        CHESSBOARD_SIZE = (11,7)
     # Prepare object points (0,0,0), (1,0,0), (2,0,0) ... (8,5,0)
     objPoints = np.zeros((CHESSBOARD_SIZE[0] * CHESSBOARD_SIZE[1], 3), np.float32)
     objPoints[:, :2] = np.mgrid[0:CHESSBOARD_SIZE[0], 0:CHESSBOARD_SIZE[1]].T.reshape(-1, 2)
@@ -59,7 +76,8 @@ def calibrate_camera():
         if ret:
             objPointsStore.append(objPoints)
 
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 300, 0.001)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+            #criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.01)
             corners2 = cv2.cornerSubPix(greyImg, corners, (11,11), (-1,-1), criteria)
             imgPointsStore.append(corners2)
 
@@ -80,6 +98,7 @@ def calibrate_camera():
     
     #Calibrate camera, K is the intrinsic camera matrix
     ret, K, distCoef, rotVecs, transVecs = cv2.calibrateCamera(objPointsStore, imgPointsStore, (greyImg.shape[1], greyImg.shape[0]), None, None)
+    print("Distortion coefficients", distCoef)
 
     #Save calibration data
     calibrationData = {
@@ -101,6 +120,7 @@ def calibrate_camera():
     return ret, K, distCoef, rotVecs, transVecs
 
 def main():
-    calibrate_camera()
+    calibrate_camera(0)
+    calibrate_camera(1)
 if __name__ == "__main__":
     main()
