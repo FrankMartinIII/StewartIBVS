@@ -64,6 +64,9 @@ class Tracker:
         rospy.loginfo(f"Initial pose X: {T_avg[0,3]} Y: {T_avg[1,3]} Z: {T_avg[2,3]}")
         rospy.loginfo(f"Roll: {roll} Pitch: {pitch} Yaw: {yaw}")
         rospy.loginfo("Initial pose set.")
+    
+    def to_pose_stamped(self, T):
+        #Convert transformation matrix to pose with rpy in degrees
 
     
     def run(self):
