@@ -13,7 +13,7 @@ class Tracker:
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
         self.aruco_size = aruco_size
-        pub = rospy.Publisher("/aruco_pose", PoseStamped, queue_size=100)
+        self.pub = rospy.Publisher("/aruco_pose", PoseStamped, queue_size=100)
          # Open camera
         self.cap = cv2.VideoCapture(camera_index)
         if not self.cap.isOpened():
@@ -23,8 +23,14 @@ class Tracker:
         rospy.loginfo(f"Camera0 resolution: {self.width}x{self.height}")
 
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
-        self.parameters = cv2.aruco.DetectorParameters()
-        
+        #self.parameters = cv2.aruco.DetectorParameters()
+        try:
+            # OpenCV ≥ 4.7
+            self.parameters = cv2.aruco.DetectorParameters()
+        except AttributeError:
+            # OpenCV < 4.7
+            self.parameters = cv2.aruco.DetectorParameters_create()
+
         # Buffers
         self.pose_buffer = deque(maxlen=10)   # rolling buffer of last detections
         self.initial_T = None                 # initial transform (4x4)
@@ -67,6 +73,24 @@ class Tracker:
     
     def to_pose_stamped(self, T):
         #Convert transformation matrix to pose with rpy in degrees
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.header.frame_id = "platform_measured"
+
+        pose_msg.pose.position.x = T[0,3]
+        pose_msg.pose.position.y = T[1,3]
+        pose_msg.pose.position.z = T[2,3]
+
+        Rmat = T[:3,:3]
+        r = Rotation.from_matrix(Rmat)
+        roll,pitch,yaw = r.as_euler('xyz', degrees=True)
+
+        pose_msg.pose.orientation.x = roll
+        pose_msg.pose.orientation.y = pitch
+        pose_msg.pose.orientation.z = yaw
+        pose_msg.pose.orientation.w = 1.0  # not a true quaternion here
+
+        return pose_msg
 
     
     def run(self):
@@ -77,7 +101,8 @@ class Tracker:
             if not ret:
                 rospy.logwarn("Failed to grab frame")
                 continue
-            cv2.imshow("Frame", frame)
+            preview_frame = cv2.resize(frame, (960, 540))
+            cv2.imshow("Frame", preview_frame)
             grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             corners, ids, rejected = cv2.aruco.detectMarkers(grey, self.aruco_dict, parameters=self.parameters)
             
@@ -104,11 +129,16 @@ class Tracker:
                         #text_world = f"World FrameX: {marker_world_pos[0]:.3f} mm  Y: {marker_world_pos[1]:.3f} mm  Z: {marker_world_pos[2]:.3f} mm"
                         text_world = f"Relative to original X: {T_relative[0,3]:.3f} mm  Y: {T_relative[1,3]:.3f} mm  Z: {T_relative[2,3]:.3f} mm"
                         text_world_rot = f"Roll: {roll_rel:.3f} Pitch: {pitch_rel:.3f}, Yaw: {yaw_rel:.3f}"
-                        cv2.putText(frame_with_aruco, text_cam, (10, self.height - 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                        cv2.putText(frame_with_aruco, text_cam_rot, (10, self.height - 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                        cv2.putText(frame_with_aruco, text_world, (10, self.height - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 150), 2)
-                        cv2.putText(frame_with_aruco, text_world_rot, (10, self.height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 150), 2)
-                cv2.imshow("Aruco detection", frame_with_aruco)
+                        cv2.putText(frame_with_aruco, text_cam, (10, self.height - 200), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 0), 2)
+                        cv2.putText(frame_with_aruco, text_cam_rot, (10, self.height - 150), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 0), 2)
+                        cv2.putText(frame_with_aruco, text_world, (10, self.height - 75), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 150), 2)
+                        cv2.putText(frame_with_aruco, text_world_rot, (10, self.height - 30), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 150), 2)
+
+                        #Publish
+                        pose_msg = self.to_pose_stamped(T_relative)
+                        self.pub.publish(pose_msg)
+                preview_frame_with_aruco = cv2.resize(frame_with_aruco, (960, 540))
+                cv2.imshow("Aruco detection", preview_frame_with_aruco)
 
             
             key = cv2.waitKey(1) & 0xFF
@@ -133,6 +163,6 @@ if __name__ == "__main__":
     #Read in calibration parameters for the cameras
     PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/0', 'calibration_data.pkl'))
     cameraMat1, distCoeffs1 = read_params(PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, camera_index=0, aruco_size=20)
+    tracker = Tracker(cameraMat1, distCoeffs1, camera_index=4, aruco_size=20)
     tracker.run()
     
