@@ -15,9 +15,9 @@ def calibrate_camera(cameraNum):
     rotVecs: rotation vectors (omega)
     transVecs: translation vectors
     '''
-    CHESSBOARD_SIZE = (10,7)
+    CHESSBOARD_SIZE = (6,5)
     #SQUARE_SIZE = 2.36 #Size of squares in cm
-    SQUARE_SIZE = 15
+    SQUARE_SIZE = 20
     folderStr = 'calibration_images_home_webcam/' + str(cameraNum) + '/*.jpg'
     #CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images/*.jpg'))
     CALIBRATION_IMAGES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', folderStr))
@@ -120,7 +120,6 @@ def calibrate_camera(cameraNum):
     return ret, K, distCoef, rotVecs, transVecs
 
 def main():
-    calibrate_camera(0)
-    calibrate_camera(1)
+    calibrate_camera(4)
 if __name__ == "__main__":
     main()

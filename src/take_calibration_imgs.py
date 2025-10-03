@@ -6,7 +6,7 @@ import time
 def capture_calibration_images_single_cam(cameraNum):
     #Capture parameters
     CAMERA_ID = cameraNum
-    CHESSBOARD_SIZE = (10,7)
+    CHESSBOARD_SIZE = (6,5)
     OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images_home_webcam', str(cameraNum)))
     #press c to capture image
     if not os.path.exists(OUTPUT_DIRECTORY):
@@ -48,7 +48,8 @@ def capture_calibration_images_single_cam(cameraNum):
             cv2.putText(frame, "Chessboard detected!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         
         print("Image ", imgCounter, " captured")
-        cv2.imshow("Camera calibration", frame)
+        preview = cv2.resize(frame, (960, 540))
+        cv2.imshow("Camera calibration", preview)
 
         key = cv2.waitKey(1) & 0xFF
 
@@ -74,5 +75,5 @@ def capture_calibration_images_single_cam(cameraNum):
 
 
 if __name__ == "__main__":
-    capture_calibration_images_single_cam(0)
+    capture_calibration_images_single_cam(4)
     #capture_calibration_images_single_cam(2)
