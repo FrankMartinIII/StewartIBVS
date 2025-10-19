@@ -9,9 +9,10 @@ import pickle
 from scipy.spatial.transform import Rotation
 
 class Tracker:
-    def __init__(self, camera_matrix, distortion_coefficients, camera_index=0, aruco_size=50):
+    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, camera_index=0, aruco_size=50):
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
+        self.cam_to_world = T_cam_to_world
         self.aruco_size = aruco_size
         self.pub = rospy.Publisher("/aruco_pose", PoseStamped, queue_size=100)
          # Open camera
@@ -117,6 +118,7 @@ class Tracker:
                         #Buffer of poses for averaging initial pose
                         self.pose_buffer.append(T_current)
                     else:
+                        T_TEMP = self.T_cam_to_world @ T_current
                         T_relative = np.linalg.inv(self.initial_T) @ T_current
                         R_current = T_current[:3,:3]
                         r_current = Rotation.from_matrix(R_current)
@@ -125,6 +127,7 @@ class Tracker:
                         roll_cam,pitch_cam,yaw_cam = r_current.as_euler('xyz', degrees=True)
                         roll_rel,pitch_rel,yaw_rel = r_relative.as_euler('xyz', degrees=True)
                         text_cam = f"CameraFrame X: {T_current[0,3]:.3f} mm  Y: {T_current[1,3]:.3f} mm  Z: {T_current[2,3]:.3f} mm"
+                        text_cam = f"CameraFrame X: {T_TEMP[0,3]:.3f} mm  Y: {T_TEMP[1,3]:.3f} mm  Z: {T_TEMP[2,3]:.3f} mm"
                         text_cam_rot = f"Roll: {roll_cam:.3f} Pitch: {pitch_cam:.3f}, Yaw: {yaw_cam:.3f}"
                         #text_world = f"World FrameX: {marker_world_pos[0]:.3f} mm  Y: {marker_world_pos[1]:.3f} mm  Z: {marker_world_pos[2]:.3f} mm"
                         text_world = f"Relative to original X: {T_relative[0,3]:.3f} mm  Y: {T_relative[1,3]:.3f} mm  Z: {T_relative[2,3]:.3f} mm"
@@ -148,7 +151,7 @@ class Tracker:
 
         
         
-def read_params(filePath):
+def read_camera_params(filePath):
     with open(filePath, 'rb') as f:
         data = pickle.load(f)
     cameraMatrix1 = data['cameraMatrix']
@@ -158,11 +161,20 @@ def read_params(filePath):
     reprojection_err = data['reprojectionError']
     return cameraMatrix1, distCoeffs1
 
+def read_robotframe_calibration(filePath):
+    with open(filePath, 'rb') as f:
+        data = pickle.load(f)
+    T_camera_to_world = data['T_camera_to_world']
+    T_world_to_camera = data['T_world_to_camera']
+    return T_camera_to_world, T_world_to_camera
+
 if __name__ == "__main__":
     rospy.init_node("pose_tracking_node")
     #Read in calibration parameters for the cameras
-    PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/0', 'calibration_data.pkl'))
-    cameraMat1, distCoeffs1 = read_params(PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, camera_index=4, aruco_size=20)
+    CAMERA_CALIB_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/0', 'calibration_data.pkl'))
+    cameraMat1, distCoeffs1 = read_camera_params(CAMERA_CALIB_PARAM_DIR)
+    FRAME_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'RobotCameraCalibration/TransformationMatricesForStewCalib.pkl'))
+    T_camera_to_world, T_world_to_camera = read_robotframe_calibration(FRAME_PARAM_DIR)
+    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, camera_index=4, aruco_size=20)
     tracker.run()
     
