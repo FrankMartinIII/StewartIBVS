@@ -7,13 +7,17 @@ def capture_calibration_images_single_cam(cameraNum):
     #Capture parameters
     CAMERA_ID = cameraNum
     CHESSBOARD_SIZE = (6,5)
-    OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images_home_webcam', str(cameraNum)))
+    OUTPUT_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_images_home_webcam', "TEST"))
     #press c to capture image
     if not os.path.exists(OUTPUT_DIRECTORY):
         os.makedirs(OUTPUT_DIRECTORY)
 
     #Open camera
-    cap = cv2.VideoCapture(CAMERA_ID)
+    #cap = cv2.VideoCapture(CAMERA_ID)
+    cap = cv2.VideoCapture(CAMERA_ID, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'YUYV'))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     if not cap.isOpened():
         print("Error: could not open camera ", CAMERA_ID)
