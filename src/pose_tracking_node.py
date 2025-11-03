@@ -9,10 +9,11 @@ import pickle
 from scipy.spatial.transform import Rotation
 
 class Tracker:
-    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, camera_index=0, aruco_size=50):
+    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, T_world_to_camera, camera_index=0, aruco_size=50):
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
+        self.T_world_to_camera = T_world_to_camera
         self.aruco_size = aruco_size
         self.pub = rospy.Publisher("/aruco_pose", PoseStamped, queue_size=100)
          # Open camera
@@ -57,6 +58,9 @@ class Tracker:
         print(f"fx,fy = {fx:.3f}, {fy:.3f}")
         print(f"cx,cy = {cx:.3f}, {cy:.3f} (image center would be {(w/2):.1f},{(h/2):.1f})")
         print("cameraMatrix shape:", camera_matrix.shape)
+
+
+
         
 
 
@@ -180,7 +184,7 @@ class Tracker:
                 self.draw_axes_on_image(frame_with_aruco, np.eye(4), self.camera_matrix, self.distortion_coeffs, label="Camera Frame")
 
                 # Draw world frame
-                self.draw_axes_on_image(frame_with_aruco, self.T_cam_to_world, self.camera_matrix, self.distortion_coeffs, label="World Frame")
+                self.draw_axes_on_image(frame_with_aruco, self.T_world_to_camera, self.camera_matrix, self.distortion_coeffs, label="World Frame")
 
                 #estimatePose returns tvec that describes transformation from aruco center to camera optical center, it does not return coordinates of aruco in cam frame
                 rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, self.aruco_size, self.camera_matrix, self.distortion_coeffs)
@@ -189,7 +193,9 @@ class Tracker:
                     T_current = self.create_transformation_matrix(tvec, rvec)
                     if self.initial_T is None:
                         #Buffer of poses for averaging initial pose
-                        self.pose_buffer.append(T_current)
+                        #Make sure pose it in world frame before stored
+                        T_current_in_world = self.T_cam_to_world @ T_current
+                        self.pose_buffer.append(T_current_in_world)
                     else:
                         '''
                         T_TEMP = self.T_cam_to_world @ T_current
@@ -216,7 +222,7 @@ class Tracker:
                         R_current = T_current_aruco_in_camera_frame[:3,:3]
                         r_current = Rotation.from_matrix(R_current)
                         roll_aruco_cam,pitch_aruco_cam,yaw_aruco_cam = r_current.as_euler('xyz', degrees=True)
-                        text_aruco_translation_camera_space = f"Aruco in camera frame X: {T_current_aruco_in_camera_frame[1,3]:.3f}, Y: {T_current_aruco_in_camera_frame[0,3]:.3f}, Z: {T_current_aruco_in_camera_frame[2,3]:.3f}"
+                        text_aruco_translation_camera_space = f"Aruco in camera frame X: {T_current_aruco_in_camera_frame[0,3]:.3f}, Y: {T_current_aruco_in_camera_frame[1,3]:.3f}, Z: {T_current_aruco_in_camera_frame[2,3]:.3f}"
                         text_aruco_rotation_camera_space = f"Aruco in camera frame Roll: {roll_aruco_cam:.3f} Pitch: {pitch_aruco_cam:.3f}, Yaw: {yaw_aruco_cam:.3f}"
                         cv2.putText(frame_with_aruco, text_aruco_translation_camera_space, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_camera_space, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
@@ -225,10 +231,20 @@ class Tracker:
                         R_aruco_in_world = T_current_aruco_in_world_frame[:3,:3]
                         r_aruco_in_world = Rotation.from_matrix(R_aruco_in_world)
                         roll_aruco_world,pitch_aruco_world,yaw_aruco_world = r_aruco_in_world.as_euler('xyz', degrees=True)
-                        text_aruco_translation_world_space = f"Aruco in world frame X: {T_current_aruco_in_world_frame[1,3]:.3f}, Y: {T_current_aruco_in_world_frame[0,3]:.3f}, Z: {T_current_aruco_in_world_frame[2,3]:.3f}"
+                        text_aruco_translation_world_space = f"Aruco in world frame X: {T_current_aruco_in_world_frame[0,3]:.3f}, Y: {T_current_aruco_in_world_frame[1,3]:.3f}, Z: {T_current_aruco_in_world_frame[2,3]:.3f}"
                         text_aruco_rotation_world_space = f"Aruco in world frame Roll: {roll_aruco_world:.3f} Pitch: {pitch_aruco_world:.3f}, Yaw: {yaw_aruco_world:.3f}"
                         cv2.putText(frame_with_aruco, text_aruco_translation_world_space, (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_world_space, (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+
+                        #Pose of the aruco in world frame relative to where it started
+                        T_aruco_in_world_relative_to_start = np.linalg.inv(self.initial_T) @ T_current_aruco_in_world_frame
+                        R_aruco_in_world_relative_to_start = T_aruco_in_world_relative_to_start[:3,:3]
+                        r_aruco_in_world_relative_to_start = Rotation.from_matrix(R_aruco_in_world_relative_to_start)
+                        roll_aruco_rel,pitch_aruco_rel,yaw_aruco_rel = r_aruco_in_world_relative_to_start.as_euler('xyz', degrees=True)
+                        text_aruco_translation_rel = f"Aruco relative to start X: {T_aruco_in_world_relative_to_start[0,3]:.3f}, Y: {T_aruco_in_world_relative_to_start[1,3]:.3f}, Z: {T_aruco_in_world_relative_to_start[2,3]:.3f}"
+                        text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_aruco_rel:.3f}"
+                        cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+                        cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
 
                         #Publish
                         #pose_msg = self.to_pose_stamped(T_relative)
@@ -268,6 +284,6 @@ if __name__ == "__main__":
     cameraMat1, distCoeffs1 = read_camera_params(CAMERA_CALIB_PARAM_DIR)
     FRAME_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/RobotBaseToCam/TransformationMatricesForStewCalib.pkl'))
     T_camera_to_world, T_world_to_camera = read_robotframe_calibration(FRAME_PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, camera_index=4, aruco_size=20)
+    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=4, aruco_size=30)
     tracker.run()
     
