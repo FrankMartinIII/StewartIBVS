@@ -236,6 +236,7 @@ class Tracker:
                         cv2.putText(frame_with_aruco, text_aruco_translation_world_space, (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_world_space, (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
 
+                        '''
                         #Pose of the aruco in world frame relative to where it started
                         T_aruco_in_world_relative_to_start = np.linalg.inv(self.initial_T) @ T_current_aruco_in_world_frame
                         R_aruco_in_world_relative_to_start = T_aruco_in_world_relative_to_start[:3,:3]
@@ -245,6 +246,21 @@ class Tracker:
                         text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_aruco_rel:.3f}"
                         cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+                        '''
+                        #Pose of the aruco in world frame relative to where it started
+                        delta_pose_world = T_current_aruco_in_world_frame[:3,3] - self.initial_T[:3,3]
+                        R_initial_in_world = self.initial_T[:3,:3]
+                        R_delta = R_aruco_in_world @ R_initial_in_world
+                        r_delta = Rotation.from_matrix(R_delta)
+                        yaw_world = np.degrees(np.arctan2(R_aruco_in_world[1,0], R_aruco_in_world[0,0]))
+                        yaw_init = np.degrees(np.arctan2(R_initial_in_world[1,0], R_initial_in_world[0,0]))
+                        yaw_change = yaw_world - yaw_init
+                        roll_aruco_rel, pitch_aruco_rel, yaw_aruco_rel = r_delta.as_euler('xyz', degrees=True)
+                        text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
+                        text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
+                        cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+                        cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+
 
                         #Publish
                         #pose_msg = self.to_pose_stamped(T_relative)
@@ -284,6 +300,6 @@ if __name__ == "__main__":
     cameraMat1, distCoeffs1 = read_camera_params(CAMERA_CALIB_PARAM_DIR)
     FRAME_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/RobotBaseToCam/TransformationMatricesForStewCalib.pkl'))
     T_camera_to_world, T_world_to_camera = read_robotframe_calibration(FRAME_PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=4, aruco_size=30)
+    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=4, aruco_size=50)
     tracker.run()
     
