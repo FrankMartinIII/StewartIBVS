@@ -26,7 +26,8 @@ bool pendingFKReq = false;
 
 double convertCommandToLength(double command)
 {
-    double length = ((command / 1023) * 30) + 121.5;
+    //double length = ((command / 1023) * 30) + 121.5;
+    double length = ((command / 1023) * 30) + 122.64;
     return length;
 }
 
@@ -36,6 +37,8 @@ void legCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
     for(int i = 0 ; i < latestLegFB.size() ; i++)
     {
         latestLegFB[i] = convertCommandToLength(msg->data[i]);
+        std::string m = std::string("Leg command ") + std::to_string(i) + std::string(" ") + std::to_string(latestLegFB[i]) + std::string("\n");
+        ROS_INFO(m.c_str());
     }
     //Do the forward kinematics
     std::vector<double> realPose = ik.forwardKinematics(latestLegFB, latestPoseCmd);

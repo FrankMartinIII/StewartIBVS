@@ -16,14 +16,16 @@ class IK
         const int topPlateHoleRadius = 41;
         //const double attachmentPointOffset = 11;
         //const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
-        const double botAttachmentPointOffset = 20;
-        const double topAttachmentPointOffset = 14;
+        //const double botAttachmentPointOffset = 20; //Old vals assume center of mass of each plate
+        //const double topAttachmentPointOffset = 14;
+        const double botAttachmentPointOffset = 40; //New vals go all the way from bottom of base to top of plate
+        const double topAttachmentPointOffset = 24;
         const double homeHeight = 135.0413717 + botAttachmentPointOffset + topAttachmentPointOffset;
 
-        double bottomPlateXPoints[6];
-        double bottomPlateYPoints[6];
-        double topPlateXPoints[6];
-        double topPlateYPoints[6];
+        double bottomPlateXPoints[6] = {40.076, 57.326, 17.088, -17.412, -57.649, -40.4};
+        double bottomPlateYPoints[6] = {43.281, 13.404, -56.291, -56.291, 13.403, 43.281};
+        double topPlateXPoints[6] = {13.935, 40.29, 26.267, -26.442, -40.465, -14.11};
+        double topPlateYPoints[6] = {38.704, -6.9426, -31.231, -31.231, -6.9426, 38.704};
 
         double legLengths[6] = {0, 0, 0, 0, 0, 0};
 
@@ -45,6 +47,7 @@ class IK
     void calcPoints()
     {
         //Conversion from degrees to radians and then to x y coordinates
+        /*
         for(int i = 0 ; i < 6 ; i++)
         {
             bottomPlateXPoints[i] = bottomPlateHoleRadius * cos(bottomPlateDegreeVals[i] * M_PI / 180.0);
@@ -52,7 +55,8 @@ class IK
     
             topPlateXPoints[i] = topPlateHoleRadius * cos(topPlateDegreeVals[i] * M_PI / 180.0);
             topPlateYPoints[i] = topPlateHoleRadius * sin(topPlateDegreeVals[i] * M_PI / 180.0);
-        }
+        }*/
+        std::cout << "attachment points not calculated"<<std::endl;
     }
     
     Eigen::Matrix<double, 6, 3> inverseKinematics(double x_p, double y_p, double z_p,  double roll, double pitch, double yaw)
@@ -74,7 +78,7 @@ class IK
         {
             p_i_local(i, 0) = topPlateXPoints[i];
             p_i_local(i, 1) = topPlateYPoints[i];
-            p_i_local(i, 2) = -topAttachmentPointOffset; // same convention as calcLegLengths
+            p_i_local(i, 2) = -topAttachmentPointOffset; 
         }
 
         // fill base joint positions b_i (world), using bottom attachment offset in z
@@ -84,7 +88,7 @@ class IK
             b_i(i, 1) = bottomPlateYPoints[i];
             b_i(i, 2) = botAttachmentPointOffset;
         }
-        // compute leg vectors l_i and unit vectors, and p_i_world = l_i + b_i (matching Python)
+        // compute leg vectors l_i and unit vectors, and p_i_world = l_i + b_i
         for (int i = 0; i < 6; ++i)
         {
             // a_i = platform origin + R * p_i_local[i]
@@ -103,7 +107,7 @@ class IK
             Eigen::Vector3d l_unit = l_vec / norm;
             l_i_unit.row(i) = l_unit.transpose();
             legLengths[i] = norm;
-            // p_i_world (same as Python: moving platform points wrt base frame)
+            // p_i_world (moving platform points wrt base frame)
             p_i_world.row(i) = (l_vec + b_row).transpose();
         }
 

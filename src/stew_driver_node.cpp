@@ -10,7 +10,9 @@ Firgelli firgelli;
 int numFound;
 ros::Subscriber sub;
 ros::Publisher pub;
+ros::Publisher pub2; //For debugging leg commands
 std_msgs::Float64MultiArray rosPubMsg;
+std_msgs::Float64MultiArray legCommands;
 
 //Old vals were good for motor one but bounds are inconsistent across motors
 const int minExtensionCommand = 45;
@@ -19,7 +21,8 @@ const int maxExtensionCommand = 950;
 int convertLengthToCommand(double length)
 {
     //int command = (31.91 * (length-121.5)) - 16.01;
-    int command = ((length - 121.5) / 30) * 1023;
+    //int command = ((length - 121.5) / 30) * 1023;
+    int command = ((length - 122.64) / 30) * 1023;
     return command;
 }
 
@@ -41,7 +44,8 @@ void initStewartPlatform()
     */
    for(int rank = 0 ; rank < numFound ; rank++)
     {
-    	firgelli.WriteCodeToRank(rank, 1, 17);
+    	//firgelli.WriteCodeToRank(rank, 1, 17);
+        firgelli.WriteCodeToRank(rank, 1, 5);
     }
 
 }
@@ -57,6 +61,7 @@ void callback(const std_msgs::Float64MultiArray::ConstPtr& msg)
         commands.at(rank) = convertLengthToCommand(msg->data.at(rank));
         std::string m = std::string("Leg command ") + std::to_string(rank) + std::string(" ") + std::to_string(commands[rank]) + std::string("\n");
         ROS_INFO(m.c_str());
+        legCommands.data[rank] = commands[rank];
     }
 
     //Check for bad moves that exceed bounds
@@ -122,10 +127,12 @@ int main(int argc, char** argv)
     initStewartPlatform();
     firgelli.SetDebug(1);
     rosPubMsg.data.resize(6);
+    legCommands.data.resize(6);
     ros::init(argc, argv, "stew_driver_node");
     ros::NodeHandle nh;
     sub = nh.subscribe("vs_stewart/legOperation", 100, callback);
     pub = nh.advertise<std_msgs::Float64MultiArray>("vs_stewart/legFeedback", 100);
+    pub2 = nh.advertise<std_msgs::Float64MultiArray>("vs_stewart/legCommands", 100); //For debugging
     ros::Rate loop_rate(10);
 
     while(ros::ok())
@@ -133,6 +140,7 @@ int main(int argc, char** argv)
         getFeedback();
 
         pub.publish(rosPubMsg);
+        pub2.publish(legCommands);
 
         ros::spinOnce();
         loop_rate.sleep();
