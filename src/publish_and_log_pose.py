@@ -111,6 +111,6 @@ if __name__ == "__main__":
     commands_file_path = os.path.join(package_path, 'data', 'commands.txt')
     return_file_path = os.path.join(package_path, 'data', 'calib_log.csv')
     cmd_file = rospy.get_param("~cmd_file", commands_file_path)
-    wait_time = rospy.get_param("~wait_time", 1.0)
+    wait_time = rospy.get_param("~wait_time", 70.0) #milliseconds
     logger = PoseLogger(cmd_file, wait_time, log_file=return_file_path)
     logger.run()

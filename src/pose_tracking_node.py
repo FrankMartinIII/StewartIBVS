@@ -102,6 +102,7 @@ class Tracker:
     
     def to_pose_stamped(self, T):
         #Convert transformation matrix to pose with rpy in degrees
+        #This probably is not what I need anymore. Making a new function to just create a pose from xyzrpy
         pose_msg = PoseStamped()
         pose_msg.header.stamp = rospy.Time.now()
         pose_msg.header.frame_id = "platform_measured"
@@ -121,6 +122,22 @@ class Tracker:
 
         return pose_msg
     
+    def make_pose_stamped(self, x_trans, y_trans, z_trans, r, p, y):
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.header.frame_id = "platform_measured"
+
+        pose_msg.pose.position.x = x_trans
+        pose_msg.pose.position.y = y_trans
+        pose_msg.pose.position.z = z_trans
+
+        pose_msg.pose.orientation.x = r
+        pose_msg.pose.orientation.y = p
+        pose_msg.pose.orientation.z = y
+        pose_msg.pose.orientation.w = 1.0  # not a true quaternion here
+
+        return pose_msg
+
     def draw_axes_on_image(self, img, T, camera_matrix, dist_coeffs, label="Frame", axis_length=50):
         """
         Draw a 3D axes for a given 4x4 transform T on an image.
@@ -256,8 +273,10 @@ class Tracker:
                         yaw_init = np.degrees(np.arctan2(R_initial_in_world[1,0], R_initial_in_world[0,0]))
                         yaw_change = yaw_world - yaw_init
                         roll_aruco_rel, pitch_aruco_rel, yaw_aruco_rel = r_delta.as_euler('xyz', degrees=True)
-                        text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
-                        text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
+                        #text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
+                        text_aruco_translation_rel = f"Aruco relative to start X: {-delta_pose_world[1]:.3f}, Y: {delta_pose_world[0]:.3f}, Z: {delta_pose_world[2]:.3f}"
+                        #text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
+                        text_aruco_rotation_rel = f"Aruco relative to start Roll: {pitch_aruco_rel:.3f} Pitch: {-roll_aruco_rel:.3f}, Yaw: {-yaw_change:.3f}"
                         cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
 
@@ -265,6 +284,8 @@ class Tracker:
                         #Publish
                         #pose_msg = self.to_pose_stamped(T_relative)
                         #self.pub.publish(pose_msg)
+                        pose_msg = self.make_pose_stamped(-delta_pose_world[1], delta_pose_world[0], delta_pose_world[2], pitch_aruco_rel, -roll_aruco_rel, -yaw_change)
+                        self.pub.publish(pose_msg)
                 #preview_frame_with_aruco = cv2.resize(frame_with_aruco, (960, 540))
                 cv2.imshow("Aruco detection", frame_with_aruco)
 
