@@ -264,6 +264,11 @@ class Tracker:
                         cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                         '''
+                        #Gemini is telling me that R_delta = R_aruco_in_world @ R_initial_in_world
+                        #is mathematically incorrect. That could be why I am having to reverse signs manually.
+                        #I will try transpose(T_initial_in_world) @ R_aruco_in_world instead
+                        #In this case, transpose is same as inverse.
+                        
                         #Pose of the aruco in world frame relative to where it started
                         delta_pose_world = T_current_aruco_in_world_frame[:3,3] - self.initial_T[:3,3]
                         R_initial_in_world = self.initial_T[:3,:3]
@@ -279,7 +284,24 @@ class Tracker:
                         text_aruco_rotation_rel = f"Aruco relative to start Roll: {pitch_aruco_rel:.3f} Pitch: {-roll_aruco_rel:.3f}, Yaw: {-yaw_change:.3f}"
                         cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                         cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
-
+                        
+                        '''
+                        #Pose of the aruco in world frame relative to where it started
+                        delta_pose_world = T_current_aruco_in_world_frame[:3,3] - self.initial_T[:3,3]
+                        R_initial_in_world = self.initial_T[:3,:3]
+                        R_delta = np.linalg.inv(R_aruco_in_world) @ R_initial_in_world
+                        r_delta = Rotation.from_matrix(R_delta)
+                        yaw_world = np.degrees(np.arctan2(R_aruco_in_world[1,0], R_aruco_in_world[0,0]))
+                        yaw_init = np.degrees(np.arctan2(R_initial_in_world[1,0], R_initial_in_world[0,0]))
+                        yaw_change = yaw_world - yaw_init
+                        roll_aruco_rel, pitch_aruco_rel, yaw_aruco_rel = r_delta.as_euler('xyz', degrees=True)
+                        #text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
+                        text_aruco_translation_rel = f"Aruco relative to start X: {-delta_pose_world[0]:.3f}, Y: {-delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
+                        #text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
+                        text_aruco_rotation_rel = f"Aruco relative to start Roll: {-roll_aruco_rel:.3f} Pitch: {-pitch_aruco_rel:.3f}, Yaw: {-yaw_change:.3f}"
+                        cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+                        cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
+                        '''
 
                         #Publish
                         #pose_msg = self.to_pose_stamped(T_relative)
