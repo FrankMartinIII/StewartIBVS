@@ -9,12 +9,11 @@ import pickle
 from scipy.spatial.transform import Rotation
 
 class Tracker:
-    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, T_world_to_camera, camera_index=0, aruco_size=50):
+    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, T_world_to_camera, camera_index=0, charuco_square_size=16, charuco_marker_size=12):
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
         self.T_world_to_camera = T_world_to_camera
-        self.aruco_size = aruco_size
         self.pub = rospy.Publisher("/charuco_vecs", PoseStamped, queue_size=10)
          # Open camera
         #self.cap = cv2.VideoCapture(camera_index)
@@ -41,8 +40,8 @@ class Tracker:
         
         CHARUCO_SQUARES_DIM_X = 3
         CHARUCO_SQUARES_DIM_Y = 3
-        CHARUCO_SQUARE_SIZE = 16 #16mm
-        CHARUCO_MARKER_SIZE = 12
+        CHARUCO_SQUARE_SIZE = charuco_square_size #16mm
+        CHARUCO_MARKER_SIZE = charuco_marker_size
 
         try:
             #OpenCV >= 4.7
@@ -314,10 +313,14 @@ class Tracker:
                                 cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                                 cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
                                 '''
-
-                                
+                    else:
+                        print("invalid pose")
+                
                 #preview_frame_with_aruco = cv2.resize(frame_with_aruco, (960, 540))
+                else:
+                    print("num_charuco_corners <= 0")
                 cv2.imshow("Aruco detection", frame_with_aruco)
+
 
             
             key = cv2.waitKey(1) & 0xFF
@@ -351,6 +354,6 @@ if __name__ == "__main__":
     cameraMat1, distCoeffs1 = read_camera_params(CAMERA_CALIB_PARAM_DIR)
     FRAME_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/RobotBaseToCam/TransformationMatricesForStewCalib.pkl'))
     T_camera_to_world, T_world_to_camera = read_robotframe_calibration(FRAME_PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=0, aruco_size=40)
+    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=4)
     tracker.run()
     

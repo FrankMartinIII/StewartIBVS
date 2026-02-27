@@ -17,7 +17,8 @@ class PoseLogger:
         rospy.init_node('publish_and_log_data')
         self.charuco_rvecs_buffer = np.zeros(3)
         self.charuco_tvecs_buffer = np.zeros(3)
-        self.most_recent_leg_lengths = np.zeros(6)
+        self.charuco_most_recent_time = 0
+        self.most_recent_leg_commands = np.zeros(6)
         self.most_recent_leg_feedback = np.zeros(6)
         self.wait_time = wait_time
         self.target_samples = target_samples
@@ -25,12 +26,12 @@ class PoseLogger:
         #New subscriber here gets the rvecs and tvecs. I will load these into a pose, ignoring the w part of quat.
         #I really should make a custom msg but that would take more time.
         #I set queue size to 1 so that older messages are thrown away
-        rospy.Subscriber("/charuco_vecs", PoseStamped, self.charuco_callback, queue_size=1)
+        rospy.Subscriber("vs_stewart/charuco_vecs", PoseStamped, self.charuco_callback, queue_size=1)
         #Another subscriber for commanded leg lengths
-
+        rospy.Subscriber("vs_stewart/legOperation", Float64MultiArray, self.leg_commands_callback, queue_size=1)
         #And another subscriber for leg feedback. Problem is that leg feedback isnt going to be in mm
         #So I need to convert from command to leng in callback
-        rospy.Subscriber("/legFeedback", Float64MultiArray, self.charuco_callback, queue_size=1)
+        rospy.Subscriber("vs_stewart/legFeedback", Float64MultiArray, self.leg_feedback_callback, queue_size=1)
         #Publisher to send the input commands
         self.pub = rospy.Publisher('vs_stewart/platformCmd', Twist, queue_size=10)
 
@@ -46,7 +47,7 @@ class PoseLogger:
         #Open file for reading
         with open(filename, "r") as f: 
             for line in f:
-                if line.strip == "": #Skipping blanks I think
+                if line.strip() == "": #Skipping blanks I think
                     continue
                 parts = list(map(float, line.strip().split()))
                 if len(parts) != 6:
@@ -61,9 +62,14 @@ class PoseLogger:
         #Not implemented for now
         return
     
+    def convert_cmd_to_len(self, command):
+        #int command = ((length - 122.64) / 30) * 1023;
+        length = ((30 * command) / 1023) + 122.64
+        return length
+    
     def charuco_callback(self, pose_stamped):
         tvec = np.zeros(3)
-        rvec = np.zeroes(3)
+        rvec = np.zeros(3)
         tvec[0] = pose_stamped.pose.position.x
         tvec[1] = pose_stamped.pose.position.y 
         tvec[2] = pose_stamped.pose.position.z 
@@ -73,6 +79,19 @@ class PoseLogger:
         #w is thrown away
         self.charuco_rvecs_buffer = rvec
         self.charuco_tvecs_buffer = tvec
+        self.charuco_most_recent_time = pose_stamped.header.stamp
+    
+    def leg_commands_callback(self, float_64_multi_array):
+        incoming_data = np.array(float_64_multi_array.data).reshape(self.most_recent_leg_feedback.shape)
+        self.most_recent_leg_commands[:] = incoming_data
+
+    def leg_feedback_callback(self, float_64_multi_array):
+        #Loop thru the 6 legs and convert feedback to lengths
+        incoming_data = np.array(float_64_multi_array.data).reshape(self.most_recent_leg_feedback.shape)
+        for leg_id in range(0,6):
+            incoming_data[leg_id] = self.convert_cmd_to_len(incoming_data[leg_id])
+        self.most_recent_leg_feedback[:] = incoming_data
+
 
     
     def run(self):
@@ -98,10 +117,29 @@ class PoseLogger:
             #The point of this delay code is to give the robot time to move into position
 
             start_time = time.time()
-            while time.time() - start_time < self.wait_time and len(self.pose_buffer) < self.target_samples and not rospy.is_shutdown():
+            while time.time() - start_time < self.wait_time and not rospy.is_shutdown():
                 rate.sleep()
             #Once this is over, we should be safe to get leg lengths and start logging
 
+            #Log and append to csv
+            
+            with open(self.log_file, "a") as f:
+                row = cmd + self.charuco_rvecs_buffer.tolist() + self.charuco_tvecs_buffer.tolist() + self.most_recent_leg_commands.tolist() + self.most_recent_leg_feedback.tolist() + [pub_time, self.charuco_most_recent_time]
+                f.write(",".join(map(str,row)) + "\n")
+                
+
+
+if __name__ == "__main__":
+    # Create a RosPack object
+    rospack = rospkg.RosPack()
+    # Get the path to your package
+    package_path = rospack.get_path('vs_stewart')
+    commands_file_path = os.path.join(package_path, 'data', 'commands.txt')
+    return_file_path = os.path.join(package_path, 'data', 'calib_log2.csv')
+    cmd_file = rospy.get_param("~cmd_file", commands_file_path)
+    wait_time = rospy.get_param("~wait_time", 6.0) #seconds
+    logger = PoseLogger(cmd_file, wait_time=wait_time, log_file=return_file_path)
+    logger.run()
             
             
 
