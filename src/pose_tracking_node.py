@@ -343,6 +343,6 @@ if __name__ == "__main__":
     cameraMat1, distCoeffs1 = read_camera_params(CAMERA_CALIB_PARAM_DIR)
     FRAME_PARAM_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'calibration_params_home_webcam/RobotBaseToCam/TransformationMatricesForStewCalib.pkl'))
     T_camera_to_world, T_world_to_camera = read_robotframe_calibration(FRAME_PARAM_DIR)
-    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=4, aruco_size=40)
+    tracker = Tracker(cameraMat1, distCoeffs1, T_camera_to_world, T_world_to_camera, camera_index=0, aruco_size=40)
     tracker.run()
     
