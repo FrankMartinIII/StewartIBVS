@@ -243,76 +243,33 @@ class Tracker:
                         self.pub.publish(pose_msg)
 
 
+                        print(rvec.shape)
+                        T_current_in_camera = self.create_transformation_matrix(tvec, rvec)
+                        T_current_in_world = self.T_cam_to_world @ T_current_in_camera
 
+                        if self.initial_T is None:
+                            #Buffer of poses for averaging initial pose
+                            #Make sure pose it in world frame before stored
+                            self.pose_buffer.append(T_current_in_world)
+                        else:
+                            #Get xyz diff
+                            delta_pos_world = T_current_in_world[:3,3] - self.initial_T[:3,3]
 
-                        for r, t in zip(rvec, tvec):
-                            print(rvec.shape)
-                            T_current = self.create_transformation_matrix(tvec, rvec)
-                            
-                            if self.initial_T is None:
-                                #Buffer of poses for averaging initial pose
-                                #Make sure pose it in world frame before stored
-                                T_current_in_world = self.T_cam_to_world @ T_current
-                                self.pose_buffer.append(T_current_in_world)
-                            else:
+                            #Rotational diff
+                            R_initial_world = self.initial_T[:3,:3]
+                            R_current_world = T_current_in_world[:3,:3]
+                            R_delta = R_initial_world.T @ R_current_world
 
-                                #Starting pose of aruco in camera frame
-                                T_current_aruco_in_camera_frame = T_current
-                                R_current = T_current_aruco_in_camera_frame[:3,:3]
-                                r_current = Rotation.from_matrix(R_current)
-                                roll_aruco_cam,pitch_aruco_cam,yaw_aruco_cam = r_current.as_euler('xyz', degrees=True)
-                                text_aruco_translation_camera_space = f"Aruco in camera frame X: {T_current_aruco_in_camera_frame[0,3]:.3f}, Y: {T_current_aruco_in_camera_frame[1,3]:.3f}, Z: {T_current_aruco_in_camera_frame[2,3]:.3f}"
-                                text_aruco_rotation_camera_space = f"Aruco in camera frame Roll: {roll_aruco_cam:.3f} Pitch: {pitch_aruco_cam:.3f}, Yaw: {yaw_aruco_cam:.3f}"
-                                cv2.putText(frame_with_aruco, text_aruco_translation_camera_space, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-                                cv2.putText(frame_with_aruco, text_aruco_rotation_camera_space, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-                                #Pose of aruco in world frame
-                                T_current_aruco_in_world_frame = self.T_cam_to_world @ T_current_aruco_in_camera_frame #This is T_camera_to_world x T_camera_to_marker (from estimatePoseSIngleMarker)
-                                R_aruco_in_world = T_current_aruco_in_world_frame[:3,:3]
-                                r_aruco_in_world = Rotation.from_matrix(R_aruco_in_world)
-                                roll_aruco_world,pitch_aruco_world,yaw_aruco_world = r_aruco_in_world.as_euler('xyz', degrees=True)
-                                text_aruco_translation_world_space = f"Aruco in world frame X: {T_current_aruco_in_world_frame[0,3]:.3f}, Y: {T_current_aruco_in_world_frame[1,3]:.3f}, Z: {T_current_aruco_in_world_frame[2,3]:.3f}"
-                                text_aruco_rotation_world_space = f"Aruco in world frame Roll: {roll_aruco_world:.3f} Pitch: {pitch_aruco_world:.3f}, Yaw: {yaw_aruco_world:.3f}"
-                                cv2.putText(frame_with_aruco, text_aruco_translation_world_space, (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-                                cv2.putText(frame_with_aruco, text_aruco_rotation_world_space, (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-                                
-                                #Gemini is telling me that R_delta = R_aruco_in_world @ R_initial_in_world
-                                #is mathematically incorrect. That could be why I am having to reverse signs manually.
-                                #I will try transpose(T_initial_in_world) @ R_aruco_in_world instead
-                                #In this case, transpose is same as inverse.
-                                
-                                #Pose of the aruco in world frame relative to where it started
-                                delta_pose_world = T_current_aruco_in_world_frame[:3,3] - self.initial_T[:3,3]
-                                R_initial_in_world = self.initial_T[:3,:3]
-                                R_delta = R_aruco_in_world @ R_initial_in_world
-                                r_delta = Rotation.from_matrix(R_delta)
-                                yaw_world = np.degrees(np.arctan2(R_aruco_in_world[1,0], R_aruco_in_world[0,0]))
-                                yaw_init = np.degrees(np.arctan2(R_initial_in_world[1,0], R_initial_in_world[0,0]))
-                                yaw_change = yaw_world - yaw_init
-                                roll_aruco_rel, pitch_aruco_rel, yaw_aruco_rel = r_delta.as_euler('xyz', degrees=True)
-                                #text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
-                                text_aruco_translation_rel = f"Aruco relative to start X: {-delta_pose_world[1]:.3f}, Y: {delta_pose_world[0]:.3f}, Z: {delta_pose_world[2]:.3f}"
-                                #text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
-                                text_aruco_rotation_rel = f"Aruco relative to start Roll: {pitch_aruco_rel:.3f} Pitch: {-roll_aruco_rel:.3f}, Yaw: {-yaw_change:.3f}"
-                                cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
-                                cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
-                                
-                                '''
-                                #Pose of the aruco in world frame relative to where it started
-                                delta_pose_world = T_current_aruco_in_world_frame[:3,3] - self.initial_T[:3,3]
-                                R_initial_in_world = self.initial_T[:3,:3]
-                                R_delta = np.linalg.inv(R_aruco_in_world) @ R_initial_in_world
-                                r_delta = Rotation.from_matrix(R_delta)
-                                yaw_world = np.degrees(np.arctan2(R_aruco_in_world[1,0], R_aruco_in_world[0,0]))
-                                yaw_init = np.degrees(np.arctan2(R_initial_in_world[1,0], R_initial_in_world[0,0]))
-                                yaw_change = yaw_world - yaw_init
-                                roll_aruco_rel, pitch_aruco_rel, yaw_aruco_rel = r_delta.as_euler('xyz', degrees=True)
-                                #text_aruco_translation_rel = f"Aruco relative to start X: {delta_pose_world[0]:.3f}, Y: {delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
-                                text_aruco_translation_rel = f"Aruco relative to start X: {-delta_pose_world[0]:.3f}, Y: {-delta_pose_world[1]:.3f}, Z: {delta_pose_world[2]:.3f}"
-                                #text_aruco_rotation_rel = f"Aruco irelative to start Roll: {roll_aruco_rel:.3f} Pitch: {pitch_aruco_rel:.3f}, Yaw: {yaw_change:.3f}"
-                                text_aruco_rotation_rel = f"Aruco relative to start Roll: {-roll_aruco_rel:.3f} Pitch: {-pitch_aruco_rel:.3f}, Yaw: {-yaw_change:.3f}"
-                                cv2.putText(frame_with_aruco, text_aruco_translation_rel, (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
-                                cv2.putText(frame_with_aruco, text_aruco_rotation_rel, (10, 550), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
-                                '''
+                            #Convert to Euler
+                            r_delta = Rotation.from_matrix(R_delta)
+                            roll_rel, pitch_rel, yaw_rel = r_delta.as_euler('xyz', degrees=True)
+
+                            #Text display
+                            text_pos = f"Rel Pos (mm) X: {delta_pos_world[0]:.1f} Y: {delta_pos_world[1]:.1f} Z: {delta_pos_world[2]:.1f}"
+                            text_rot = f"Rel Rot (deg) R: {roll_rel:.2f} P: {pitch_rel:.2f} Y: {yaw_rel:.2f}"
+
+                            cv2.putText(frame_with_aruco, text_pos, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                            cv2.putText(frame_with_aruco, text_rot, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                     else:
                         print("invalid pose")
                 
