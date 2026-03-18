@@ -3,6 +3,7 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 from geometry_msgs.msg import PoseStamped
+from vs_stewart.msg import PoseData
 from collections import deque
 import os
 import pickle
@@ -14,7 +15,7 @@ class Tracker:
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
         self.T_world_to_camera = T_world_to_camera
-        self.pub = rospy.Publisher("/charuco_vecs", PoseStamped, queue_size=10)
+        self.pub = rospy.Publisher("vs_stewart/charuco_vecs", PoseData, queue_size=10)
          # Open camera
         #self.cap = cv2.VideoCapture(camera_index)
         #if not self.cap.isOpened():
@@ -56,6 +57,8 @@ class Tracker:
         # Buffers
         self.pose_buffer = deque(maxlen=10)   # rolling buffer of last detections
         self.initial_T = None                 # initial transform (4x4)
+        self.initial_charuco_in_world_position_vector = [0, 0, 0]
+        self.initial_charuco_in_world_orientation_vector = [0, 0, 0, 1]
 
         #Check matrix and frame size
         h, w = frame.shape[:2]
@@ -232,6 +235,7 @@ class Tracker:
                         print(tvec)
 
                         #Publish
+                        '''
                         pose_msg = PoseStamped()
                         pose_msg.header.stamp = rospy.Time.now()
                         pose_msg.pose.orientation.x = rvec[0]
@@ -241,6 +245,15 @@ class Tracker:
                         pose_msg.pose.position.y = tvec[1]
                         pose_msg.pose.position.z = tvec[2]
                         self.pub.publish(pose_msg)
+                        '''
+                        pose_msg = PoseData()
+                        pose_msg.header.stamp = rospy.Time.now()
+                        pose_msg.charucoRvec.x = rvec[0]
+                        pose_msg.charucoRvec.y = rvec[1]
+                        pose_msg.charucoRvec.z = rvec[2]
+                        pose_msg.charucoTvec.x = tvec[0]
+                        pose_msg.charucoTvec.y = tvec[1]
+                        pose_msg.charucoTvec.z = tvec[2]
 
 
                         print(rvec.shape)
@@ -270,6 +283,27 @@ class Tracker:
 
                             cv2.putText(frame_with_aruco, text_pos, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                             cv2.putText(frame_with_aruco, text_rot, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+                            #Current pose in world coordinated pushed into msg
+                            pose_msg.charucoInWorldCoordinates.position.x = delta_pos_world[0]
+                            pose_msg.charucoInWorldCoordinates.position.y = delta_pos_world[1]
+                            pose_msg.charucoInWorldCoordinates.position.z = delta_pos_world[2]
+                            pose_msg.charucoInWorldCoordinates.orientation.x = roll_rel
+                            pose_msg.charucoInWorldCoordinates.orientation.y = pitch_rel
+                            pose_msg.charucoInWorldCoordinates.orientation.z = yaw_rel
+                            pose_msg.charucoInWorldCoordinates.orientation.w = 1.0
+
+                            #initial_T also stored in msg
+                            pose_msg.charucoStartingInWorldCoordinates.position.x = self.initial_charuco_in_world_position_vector[0]
+                            pose_msg.charucoStartingInWorldCoordinates.position.y = self.initial_charuco_in_world_position_vector[1]
+                            pose_msg.charucoStartingInWorldCoordinates.position.z = self.initial_charuco_in_world_position_vector[2]
+                            pose_msg.charucoStartingInWorldCoordinates.orientation.x = self.initial_charuco_in_world_orientation_vector[0]
+                            pose_msg.charucoStartingInWorldCoordinates.orientation.y = self.initial_charuco_in_world_orientation_vector[1]
+                            pose_msg.charucoStartingInWorldCoordinates.orientation.z = self.initial_charuco_in_world_orientation_vector[2]
+                        self.pub.publish(pose_msg)
+
+
+
                     else:
                         print("invalid pose")
                 
@@ -284,6 +318,20 @@ class Tracker:
             if key == ord('c'):
                 if len(self.pose_buffer) == self.pose_buffer.maxlen:
                     self.set_initial_pose()
+                    #Taking this initial position and rotation of charuco and storing it for use in message publishing
+                    #XYZ position
+                    pos_world = self.initial_T[:3,3]
+                    self.initial_charuco_in_world_position_vector[0] = pos_world[0]
+                    self.initial_charuco_in_world_position_vector[1] = pos_world[1]
+                    self.initial_charuco_in_world_position_vector[2] = pos_world[2]
+                    #RPY orientation
+                    R_world = self.initial_T[:3,:3]
+                    r_world = Rotation.from_matrix(R_world)
+                    roll, pitch, yaw = r_world.as_euler('xyz', degrees=True)
+                    self.initial_charuco_in_world_orientation_vector[0] = roll
+                    self.initial_charuco_in_world_orientation_vector[1] = pitch
+                    self.initial_charuco_in_world_orientation_vector[2] = yaw
+                    self.initial_charuco_in_world_orientation_vector[3] = 1.0
 
         
         

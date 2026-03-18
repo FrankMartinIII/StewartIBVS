@@ -6,6 +6,7 @@ import sys, select, tty, termios
 import time
 import rospy
 from geometry_msgs.msg import Twist, PoseStamped, Vector3Stamped
+from vs_stewart.msg import PoseData
 from std_msgs.msg import Float64MultiArray
 import csv
 import numpy as np
@@ -15,18 +16,22 @@ import os
 class PoseLogger:
     def __init__(self, cmd_file, target_samples=10, wait_time=100.0, log_file="calibration_log_with_legs.csv"):
         rospy.init_node('publish_and_log_data')
+        #Rvecs and tvecs of the charuco as detected by estimatePoseCharucoBoard, in camera space I think
         self.charuco_rvecs_buffer = np.zeros(3)
         self.charuco_tvecs_buffer = np.zeros(3)
+        #Hold the charuco pose from the pose tracking node (xyzrpy) and the current charuco pose relative to the starting pose
+        #These are both in the world frame
+        self.charuco_starting_pose_in_world_coords = np.zeros(6)
+        self.charuco_relative_pose_in_world_coords = np.zeros(6)
         self.charuco_most_recent_time = 0
         self.most_recent_leg_commands = np.zeros(6)
         self.most_recent_leg_feedback = np.zeros(6)
         self.wait_time = wait_time
         self.target_samples = target_samples
 
-        #New subscriber here gets the rvecs and tvecs. I will load these into a pose, ignoring the w part of quat.
-        #I really should make a custom msg but that would take more time.
+        #New subscriber here gets the rvecs and tvecs and charuco xyzrpy starting and relative to starting. I will load these into a pose, ignoring the w part of quat.
         #I set queue size to 1 so that older messages are thrown away
-        rospy.Subscriber("vs_stewart/charuco_vecs", PoseStamped, self.charuco_callback, queue_size=1)
+        rospy.Subscriber("vs_stewart/charuco_vecs", PoseData, self.charuco_callback, queue_size=1)
         #Another subscriber for commanded leg lengths
         rospy.Subscriber("vs_stewart/legOperation", Float64MultiArray, self.leg_commands_callback, queue_size=1)
         #And another subscriber for leg feedback. Problem is that leg feedback isnt going to be in mm
@@ -39,7 +44,7 @@ class PoseLogger:
         self.log_file = log_file
         with open(self.log_file, "w") as f:
             f.write("cmd_x,cmd_y,cmd_z,cmd_roll,cmd_pitch,cmd_yaw,"
-                    "meas_x,meas_y,meas_z,meas_roll,meas_pitch,meas_yaw,time_published,time_received\n")
+                    "tvec_x,tvec_y,tvec_z,rvec_x,rvec_y,rvec_z,legCom_0,legCom_1,legCom_2,legCom_3,legCom_4,legCom_5,legFeed_0,legFeed_1,legFeed_2,legFeed_3,legFeed_4,legFeed_5,rel_x,rel_y,rel_z,rel_roll,rel_pitch,rel_yaw,start_x,start_y,start_z,start_roll,start_pitch,start_yaw,time_published,time_received\n")
 
     #Load file and read it
     def load_cmd_file(self, filename):
@@ -67,19 +72,31 @@ class PoseLogger:
         length = ((30 * command) / 1023) + 122.64
         return length
     
-    def charuco_callback(self, pose_stamped):
+    def charuco_callback(self, pose_data : PoseData):
         tvec = np.zeros(3)
         rvec = np.zeros(3)
-        tvec[0] = pose_stamped.pose.position.x
-        tvec[1] = pose_stamped.pose.position.y 
-        tvec[2] = pose_stamped.pose.position.z 
-        rvec[0] = pose_stamped.pose.orientation.x  
-        rvec[1] = pose_stamped.pose.orientation.y  
-        rvec[2] = pose_stamped.pose.orientation.z 
-        #w is thrown away
+        tvec[0] = pose_data.charucoTvec.x
+        tvec[1] = pose_data.charucoTvec.y
+        tvec[2] = pose_data.charucoTvec.z
+        rvec[0] = pose_data.charucoRvec.x 
+        rvec[1] = pose_data.charucoRvec.y  
+        rvec[2] = pose_data.charucoRvec.z
         self.charuco_rvecs_buffer = rvec
         self.charuco_tvecs_buffer = tvec
-        self.charuco_most_recent_time = pose_stamped.header.stamp
+        self.charuco_starting_pose_in_world_coords[0] = pose_data.charucoStartingInWorldCoordinates.position.x
+        self.charuco_starting_pose_in_world_coords[1] = pose_data.charucoStartingInWorldCoordinates.position.y
+        self.charuco_starting_pose_in_world_coords[2] = pose_data.charucoStartingInWorldCoordinates.position.z
+        self.charuco_starting_pose_in_world_coords[3] = pose_data.charucoStartingInWorldCoordinates.orientation.x
+        self.charuco_starting_pose_in_world_coords[4] = pose_data.charucoStartingInWorldCoordinates.orientation.y
+        self.charuco_starting_pose_in_world_coords[5] = pose_data.charucoStartingInWorldCoordinates.orientation.z
+
+        self.charuco_relative_pose_in_world_coords[0] = pose_data.charucoInWorldCoordinates.position.x
+        self.charuco_relative_pose_in_world_coords[1] = pose_data.charucoInWorldCoordinates.position.y
+        self.charuco_relative_pose_in_world_coords[2] = pose_data.charucoInWorldCoordinates.position.z
+        self.charuco_relative_pose_in_world_coords[3] = pose_data.charucoInWorldCoordinates.orientation.x
+        self.charuco_relative_pose_in_world_coords[4] = pose_data.charucoInWorldCoordinates.orientation.y
+        self.charuco_relative_pose_in_world_coords[5] = pose_data.charucoInWorldCoordinates.orientation.z
+        self.charuco_most_recent_time = pose_data.header.stamp
     
     def leg_commands_callback(self, float_64_multi_array):
         incoming_data = np.array(float_64_multi_array.data).reshape(self.most_recent_leg_feedback.shape)
@@ -124,7 +141,7 @@ class PoseLogger:
             #Log and append to csv
             
             with open(self.log_file, "a") as f:
-                row = cmd + self.charuco_rvecs_buffer.tolist() + self.charuco_tvecs_buffer.tolist() + self.most_recent_leg_commands.tolist() + self.most_recent_leg_feedback.tolist() + [pub_time, self.charuco_most_recent_time]
+                row = cmd + self.charuco_tvecs_buffer.tolist() + self.charuco_rvecs_buffer.tolist() + self.most_recent_leg_commands.tolist() + self.most_recent_leg_feedback.tolist() + self.charuco_relative_pose_in_world_coords.tolist() + self.charuco_starting_pose_in_world_coords.tolist() + [pub_time, self.charuco_most_recent_time]
                 f.write(",".join(map(str,row)) + "\n")
                 
 
