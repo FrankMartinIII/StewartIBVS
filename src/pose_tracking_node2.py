@@ -14,6 +14,12 @@ class Tracker:
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
+        #Need to correct T_cam_to_world to align with robot frame
+        correction_T = np.eye(4)
+        correction_T[0,:3] = [0,1,0]
+        correction_T[1,:3] = [-1,0,0]
+        correction_T[2,:3] = [0,0,-1]
+        self.T_cam_to_world = correction_T @ self.T_cam_to_world
         self.T_world_to_camera = T_world_to_camera
         self.pub = rospy.Publisher("vs_stewart/charuco_vecs", PoseData, queue_size=10)
          # Open camera
@@ -77,6 +83,7 @@ class Tracker:
 
     def create_transformation_matrix(self, tvec, rvec):
         R, _ = cv2.Rodrigues(rvec)
+
         #Define identity 4x4 matrix to start
         T = np.eye(4)
         T[0:3, 0:3] = R
@@ -271,8 +278,8 @@ class Tracker:
                             #Rotational diff
                             R_initial_world = self.initial_T[:3,:3]
                             R_current_world = T_current_in_world[:3,:3]
-                            R_delta = R_initial_world.T @ R_current_world
-
+                            R_delta = R_current_world @ R_initial_world.T
+                            
                             #Convert to Euler
                             r_delta = Rotation.from_matrix(R_delta)
                             roll_rel, pitch_rel, yaw_rel = r_delta.as_euler('xyz', degrees=True)
