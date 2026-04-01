@@ -10,8 +10,8 @@
 class IK
 {
     private:
-        const int bottomPlateDegreeVals[6] = {43, 77, 163, 197, 283, 317}; //How many degrees the hole is on the base plate away from the y axis
-        const int topPlateDegreeVals[6] = {20, 100, 140, 220, 260, 340}; //How many degrees the hole is on the top plate away from the y axis
+        //const int bottomPlateDegreeVals[6] = {43, 77, 163, 197, 283, 317}; //How many degrees the hole is on the base plate away from the y axis
+        //const int topPlateDegreeVals[6] = {20, 100, 140, 220, 260, 340}; //How many degrees the hole is on the top plate away from the y axis
         const int bottomPlateHoleRadius = 59; //Radius of the plate going through the center of the holes
         const int topPlateHoleRadius = 41;
         //const double attachmentPointOffset = 11;
@@ -22,6 +22,8 @@ class IK
         const double topAttachmentPointOffset = 24;
         const double homeHeight = 135.0413717 + botAttachmentPointOffset + topAttachmentPointOffset;
 
+        const int bottomPlateDegreeVals[6] = {317, 43, 77, 163, 197, 283}; //How many degrees the hole is on the base plate away from the y axis
+        const int topPlateDegreeVals[6] = {340, 20, 100, 140, 220, 260};
         double bottomPlateXPoints[6] = {40.076, 57.326, 17.088, -17.412, -57.649, -40.4};
         double bottomPlateYPoints[6] = {43.281, 13.404, -56.291, -56.291, 13.403, 43.281};
         double topPlateXPoints[6] = {13.935, 40.29, 26.267, -26.442, -40.465, -14.11};
@@ -47,7 +49,7 @@ class IK
     void calcPoints()
     {
         //Conversion from degrees to radians and then to x y coordinates
-        /*
+        
         for(int i = 0 ; i < 6 ; i++)
         {
             bottomPlateXPoints[i] = bottomPlateHoleRadius * cos(bottomPlateDegreeVals[i] * M_PI / 180.0);
@@ -55,8 +57,8 @@ class IK
     
             topPlateXPoints[i] = topPlateHoleRadius * cos(topPlateDegreeVals[i] * M_PI / 180.0);
             topPlateYPoints[i] = topPlateHoleRadius * sin(topPlateDegreeVals[i] * M_PI / 180.0);
-        }*/
-        std::cout << "attachment points not calculated"<<std::endl;
+        }
+        //std::cout << "attachment points not calculated"<<std::endl;
     }
     
     Eigen::Matrix<double, 6, 3> inverseKinematics(double x_p, double y_p, double z_p,  double roll, double pitch, double yaw)

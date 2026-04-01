@@ -19,7 +19,7 @@ class Tracker:
         correction_T[0,:3] = [0,1,0]
         correction_T[1,:3] = [-1,0,0]
         correction_T[2,:3] = [0,0,-1]
-        self.T_cam_to_world = correction_T @ self.T_cam_to_world
+        #self.T_cam_to_world = correction_T @ self.T_cam_to_world
         self.T_world_to_camera = T_world_to_camera
         self.pub = rospy.Publisher("vs_stewart/charuco_vecs", PoseData, queue_size=10)
          # Open camera
