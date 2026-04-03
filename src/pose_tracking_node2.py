@@ -15,12 +15,21 @@ class Tracker:
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
         #Need to correct T_cam_to_world to align with robot frame
+        '''
         correction_T = np.eye(4)
         correction_T[0,:3] = [0,1,0]
         correction_T[1,:3] = [-1,0,0]
         correction_T[2,:3] = [0,0,-1]
-        #self.T_cam_to_world = correction_T @ self.T_cam_to_world
+        self.T_cam_to_world = correction_T @ self.T_cam_to_world
         self.T_world_to_camera = T_world_to_camera
+        '''
+        #Attempt to rotate world frame to align with robot base frame
+        yaw_offset_rotation = -60 #The world frame needs to be rotated 30 degrees to align with the robot frame
+        align_T = np.eye(4)
+        align_T[:3,:3] = Rotation.from_euler('z', yaw_offset_rotation, degrees=True).as_matrix()
+        self.T_cam_to_world = align_T @ self.T_cam_to_world
+
+        self.T_world_to_camera = np.linalg.inv(self.T_cam_to_world)
         self.pub = rospy.Publisher("vs_stewart/charuco_vecs", PoseData, queue_size=10)
          # Open camera
         #self.cap = cv2.VideoCapture(camera_index)
