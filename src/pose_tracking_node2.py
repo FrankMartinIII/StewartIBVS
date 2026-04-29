@@ -53,6 +53,8 @@ class Tracker:
 
         #This node will use a charuco board for more stability
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+        self.charuco_square_size = charuco_square_size
+        self.charuco_marker_size = charuco_marker_size
         
         CHARUCO_SQUARES_DIM_X = 3
         CHARUCO_SQUARES_DIM_Y = 3
@@ -244,6 +246,25 @@ class Tracker:
                     #tvec: cv2.typing.MatLike = np.zeros((3, 3, 1), dtype=np.uint8)
                     valid, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(charuco_corners, charuco_ids, self.charuco_board, self.camera_matrix, self.distortion_coeffs, None, None)
                     if valid:
+
+                        #By default, estimatePoseCharucoBoard gives matrix with center at bottom left of the board.
+                        #This code moves the center to the center of the board (hopefully)
+                        T_current_in_camera = self.create_transformation_matrix(tvec, rvec)
+                        shift_bottomleft_to_center = np.eye(4)
+                        #Shift amount is half the total board width
+                        shift_amount = self.charuco_square_size * 3 / 2
+                        shift_bottomleft_to_center[0,3] = shift_amount
+                        shift_bottomleft_to_center[1,3] = shift_amount
+                        shift_bottomleft_to_center[2,3] = -13
+                        T_current_in_camera = T_current_in_camera @ shift_bottomleft_to_center
+                        
+                        R_centered = T_current_in_camera[:3,:3]
+                        rvec_centered, _ = cv2.Rodrigues(R_centered)
+                        rvec = rvec_centered.flatten()
+                        tvec_centered = T_current_in_camera[:3,3]
+                        tvec = tvec_centered.flatten()
+
+
                         cv2.drawFrameAxes(frame_with_aruco, self.camera_matrix, self.distortion_coeffs, rvec, tvec, 80)
                         print("RVEC")
                         print(rvec)
@@ -251,17 +272,6 @@ class Tracker:
                         print(tvec)
 
                         #Publish
-                        '''
-                        pose_msg = PoseStamped()
-                        pose_msg.header.stamp = rospy.Time.now()
-                        pose_msg.pose.orientation.x = rvec[0]
-                        pose_msg.pose.orientation.y = rvec[1]
-                        pose_msg.pose.orientation.z = rvec[2]
-                        pose_msg.pose.position.x = tvec[0]
-                        pose_msg.pose.position.y = tvec[1]
-                        pose_msg.pose.position.z = tvec[2]
-                        self.pub.publish(pose_msg)
-                        '''
                         pose_msg = PoseData()
                         pose_msg.header.stamp = rospy.Time.now()
                         pose_msg.charucoRvec.x = rvec[0]
@@ -273,7 +283,7 @@ class Tracker:
 
 
                         print(rvec.shape)
-                        T_current_in_camera = self.create_transformation_matrix(tvec, rvec)
+                        
                         T_current_in_world = self.T_cam_to_world @ T_current_in_camera
 
                         if self.initial_T is None:
