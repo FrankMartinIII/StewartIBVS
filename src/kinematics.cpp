@@ -21,7 +21,7 @@ class IK
         const double botAttachmentPointOffset = 40; //New vals go all the way from bottom of base to top of plate
         const double topAttachmentPointOffset = 24;
         const double homeHeight = 135.0413717 + botAttachmentPointOffset + topAttachmentPointOffset;
-        double toolAttachmentOffset = 0; //Distance from top of the platform to the tip of the tool
+        double toolAttachmentOffset = 9; //Distance from top of the platform to the tip of the tool
 
         const int bottomPlateDegreeVals[6] = {317, 43, 77, 163, 197, 283}; //How many degrees the hole is on the base plate away from the y axis
         const int topPlateDegreeVals[6] = {340, 20, 100, 140, 220, 260};

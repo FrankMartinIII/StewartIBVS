@@ -10,7 +10,7 @@ import pickle
 from scipy.spatial.transform import Rotation
 
 class Tracker:
-    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, T_world_to_camera, camera_index=0, charuco_square_size=16, charuco_marker_size=12):
+    def __init__(self, camera_matrix, distortion_coefficients, T_cam_to_world, T_world_to_camera, camera_index=0, charuco_square_size=13.5, charuco_marker_size=10):
         self.camera_matrix = camera_matrix
         self.distortion_coeffs = distortion_coefficients
         self.T_cam_to_world = T_cam_to_world
@@ -56,8 +56,8 @@ class Tracker:
         self.charuco_square_size = charuco_square_size
         self.charuco_marker_size = charuco_marker_size
         
-        CHARUCO_SQUARES_DIM_X = 3
-        CHARUCO_SQUARES_DIM_Y = 3
+        CHARUCO_SQUARES_DIM_X = 4
+        CHARUCO_SQUARES_DIM_Y = 4
         CHARUCO_SQUARE_SIZE = charuco_square_size #16mm
         CHARUCO_MARKER_SIZE = charuco_marker_size
 
@@ -256,7 +256,7 @@ class Tracker:
                         shift_bottomleft_to_center[0,3] = shift_amount
                         shift_bottomleft_to_center[1,3] = shift_amount
                         #shift_bottomleft_to_center[2,3] = -13
-                        shift_bottomleft_to_center[2,3] = 0 
+                        shift_bottomleft_to_center[2,3] = 0
                         #This 13 was supposed to be the distance from the top of the plate to the board. However, this should no longer be needed since I added a tool offset to kinematics.cpp
                         T_current_in_camera = T_current_in_camera @ shift_bottomleft_to_center
                         
