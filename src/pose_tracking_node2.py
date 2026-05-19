@@ -255,7 +255,9 @@ class Tracker:
                         shift_amount = self.charuco_square_size * 3 / 2
                         shift_bottomleft_to_center[0,3] = shift_amount
                         shift_bottomleft_to_center[1,3] = shift_amount
-                        shift_bottomleft_to_center[2,3] = -13
+                        #shift_bottomleft_to_center[2,3] = -13
+                        shift_bottomleft_to_center[2,3] = 0 
+                        #This 13 was supposed to be the distance from the top of the plate to the board. However, this should no longer be needed since I added a tool offset to kinematics.cpp
                         T_current_in_camera = T_current_in_camera @ shift_bottomleft_to_center
                         
                         R_centered = T_current_in_camera[:3,:3]

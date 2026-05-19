@@ -21,6 +21,7 @@ class IK
         const double botAttachmentPointOffset = 40; //New vals go all the way from bottom of base to top of plate
         const double topAttachmentPointOffset = 24;
         const double homeHeight = 135.0413717 + botAttachmentPointOffset + topAttachmentPointOffset;
+        double toolAttachmentOffset = 0; //Distance from top of the platform to the tip of the tool
 
         const int bottomPlateDegreeVals[6] = {317, 43, 77, 163, 197, 283}; //How many degrees the hole is on the base plate away from the y axis
         const int topPlateDegreeVals[6] = {340, 20, 100, 140, 220, 260};
@@ -110,6 +111,69 @@ class IK
             l_i_unit.row(i) = l_unit.transpose();
             legLengths[i] = norm;
             // p_i_world (moving platform points wrt base frame)
+            p_i_world.row(i) = (l_vec + b_row).transpose();
+        }
+
+        return l_i;
+    }
+
+    Eigen::Matrix<double,6,3> inverseKinematicsToolOffset(double x_p, double y_p, double z_p, double roll, double pitch, double yaw)
+    {
+        std::cout << "Tool offset version"<<std::endl;
+        // convert to radians
+        double roll_r = roll * M_PI / 180.0;
+        double pitch_r = pitch * M_PI / 180.0;
+        double yaw_r = yaw * M_PI / 180.0;
+        double z_world = z_p + homeHeight;
+
+        // Build rotation matrix (ZYX: yaw, pitch, roll)
+        R_mat = Eigen::AngleAxisd(yaw_r, Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(pitch_r, Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(roll_r, Eigen::Vector3d::UnitX());
+        
+        Eigen::Vector3d command = Eigen::Vector3d(x_p, y_p, z_world);
+
+        //Now we find the transformation between where the joints are and the tool tip
+        double distToolToAttachmentPoints = topAttachmentPointOffset + toolAttachmentOffset;
+        Eigen::Vector3d p_tool = Eigen::Vector3d(0,0,distToolToAttachmentPoints);
+        Eigen::Vector3d topKinematicCenterCommand = command - R_mat * p_tool;
+
+        // fill local platform points p_i_local (x,y,-topAttachmentPointOffset)
+        for (int i = 0; i < 6; ++i)
+        {
+            p_i_local(i, 0) = topPlateXPoints[i];
+            p_i_local(i, 1) = topPlateYPoints[i];
+            p_i_local(i, 2) = 0; 
+        }
+
+        // fill base joint positions b_i (world), using bottom attachment offset in z
+        for (int i = 0; i < 6; ++i)
+        {
+            b_i(i, 0) = bottomPlateXPoints[i];
+            b_i(i, 1) = bottomPlateYPoints[i];
+            b_i(i, 2) = botAttachmentPointOffset;
+        }
+
+        //Compute leg vectors l_i and unit vectors, and p_i_world = l_i + b_i
+        for (int i = 0 ; i < 6 ; i++)
+        {
+            // a_i = platform origin + R * p_i_local[i]
+            Eigen::Vector3d p_local = p_i_local.row(i).transpose();
+            Eigen::Vector3d a_i = topKinematicCenterCommand + R_mat * p_local;
+
+            // b_i row
+            Eigen::Vector3d b_row = b_i.row(i).transpose();
+
+            // l_i = a_i - b_i
+            Eigen::Vector3d l_vec = a_i - b_row;
+            l_i.row(i) = l_vec.transpose();
+
+            double norm = l_vec.norm();
+            if (norm == 0.0) norm = 1e-12; // avoid div by zero
+            Eigen::Vector3d l_unit = l_vec / norm;
+            l_i_unit.row(i) = l_unit.transpose();
+            legLengths[i] = norm;
+            // p_i_world (moving platform points at joint wrt base frame)
             p_i_world.row(i) = (l_vec + b_row).transpose();
         }
 
