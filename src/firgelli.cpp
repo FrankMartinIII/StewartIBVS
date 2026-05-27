@@ -343,6 +343,7 @@ int Firgelli::OpenAll()
 	{
 		fprintf(stderr, "Incorrect number of LACs found. Hexapod should have 6 LACs");
 		//exit(1);
+		return -1;
 	}
     return nfound;
 }

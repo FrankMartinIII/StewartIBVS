@@ -14,6 +14,7 @@ class IK
         //const int topPlateDegreeVals[6] = {20, 100, 140, 220, 260, 340}; //How many degrees the hole is on the top plate away from the y axis
         const int bottomPlateHoleRadius = 59; //Radius of the plate going through the center of the holes
         const int topPlateHoleRadius = 41;
+        const double maxJointAngle = 20;
         //const double attachmentPointOffset = 11;
         //const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
         //const double botAttachmentPointOffset = 20; //Old vals assume center of mass of each plate
@@ -62,7 +63,8 @@ class IK
         //std::cout << "attachment points not calculated"<<std::endl;
     }
     
-    Eigen::Matrix<double, 6, 3> inverseKinematics(double x_p, double y_p, double z_p,  double roll, double pitch, double yaw)
+    //Eigen::Matrix<double, 6, 3> inverseKinematics(double x_p, double y_p, double z_p,  double roll, double pitch, double yaw)
+    int inverseKinematics(double x_p, double y_p, double z_p,  double roll, double pitch, double yaw)
     {
         std::cout << "is using new code"<<std::endl;
         // convert to radians
@@ -108,16 +110,46 @@ class IK
             double norm = l_vec.norm();
             if (norm == 0.0) norm = 1e-12; // avoid div by zero
             Eigen::Vector3d l_unit = l_vec / norm;
+
+            //Some added code to calculate the potential joint angles for each leg
+            //If a joint has a greater angle than the limit, we prob want to stop
+            //Define a vector pointing down from the top plate and rotate it to be aligned with the platform angle in the world frame
+            Eigen::Vector3d localDownVec(0,0,-1);
+            Eigen::Vector3d worldDownVec = R_mat * localDownVec;
+            //Used -l_unit because the leg vector points from the base to the platform
+            double dotProd = worldDownVec.dot(-l_unit);
+            //Clamp dot product to valid range for acos in case of floating point errors
+            if (dotProd > 1.0) dotProd = 1.0;
+            if (dotProd < -1.0) dotProd = -1.0;
+            double jointAngle = acos(dotProd) * 180.0 / M_PI; //Convert to degrees
+
+            Eigen::Vector3d bottomUpVec(0,0,1);
+            double botDotProd = bottomUpVec.dot(l_unit);
+            if (botDotProd > 1.0) botDotProd = 1.0;
+            if (botDotProd < -1.0) botDotProd = -1.0;
+            double botJointAngle = acos(botDotProd) * 180.0 / M_PI;
+
+            //std::cout << "Joint " << i << " angle: " << jointAngle << " degrees" << std::endl;
+            std::cout << "Leg " << i << " -> Top Angle: " << jointAngle 
+                      << "° | Bottom Angle: " << botJointAngle << "°" << std::endl;
+            if(jointAngle >= maxJointAngle)
+            {
+                return -1; //Return bad flag if the bound is exceeded
+            }
+
+
+
             l_i_unit.row(i) = l_unit.transpose();
             legLengths[i] = norm;
             // p_i_world (moving platform points wrt base frame)
             p_i_world.row(i) = (l_vec + b_row).transpose();
         }
 
-        return l_i;
+        return 0;
     }
 
-    Eigen::Matrix<double,6,3> inverseKinematicsToolOffset(double x_p, double y_p, double z_p, double roll, double pitch, double yaw)
+    //Eigen::Matrix<double,6,3> inverseKinematicsToolOffset(double x_p, double y_p, double z_p, double roll, double pitch, double yaw)
+    int inverseKinematicsToolOffset(double x_p, double y_p, double z_p, double roll, double pitch, double yaw)
     {
         std::cout << "Tool offset version"<<std::endl;
         // convert to radians
@@ -171,13 +203,32 @@ class IK
             double norm = l_vec.norm();
             if (norm == 0.0) norm = 1e-12; // avoid div by zero
             Eigen::Vector3d l_unit = l_vec / norm;
+
+            //Some added code to calculate the potential joint angles for each leg
+            //If a joint has a greater angle than the limit, we prob want to stop
+            //Define a vector pointing down from the top plate and rotate it to be aligned with the platform angle in the world frame
+            Eigen::Vector3d localDownVec(0,0,-1);
+            Eigen::Vector3d worldDownVec = R_mat * localDownVec;
+            //Used -l_unit because the leg vector points from the base to the platform
+            double dotProd = worldDownVec.dot(-l_unit);
+            //Clamp dot product to valid range for acos in case of floating point errors
+            if (dotProd > 1.0) dotProd = 1.0;
+            if (dotProd < -1.0) dotProd = -1.0;
+            double jointAngle = acos(dotProd) * 180.0 / M_PI; //Convert to degrees
+            std::cout << "Joint " << i << " angle: " << jointAngle << " degrees" << std::endl;
+            if(jointAngle >= maxJointAngle)
+            {
+                return -1; //Return bad flag if the bound is exceeded
+            }
+
+            
             l_i_unit.row(i) = l_unit.transpose();
             legLengths[i] = norm;
             // p_i_world (moving platform points at joint wrt base frame)
             p_i_world.row(i) = (l_vec + b_row).transpose();
         }
 
-        return l_i;
+        return 0;
     }
     
     /*

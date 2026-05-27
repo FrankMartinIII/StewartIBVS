@@ -22,12 +22,23 @@ void callback(const geometry_msgs::Twist::ConstPtr& msg)
     double roll = msg->angular.x;
     double pitch = msg->angular.y;
     double yaw = msg->angular.z;
-    ik.inverseKinematicsToolOffset(xtrans, ytrans, ztrans, roll, pitch, yaw);
+    int retFlag = ik.inverseKinematics(xtrans, ytrans, ztrans, roll, pitch, yaw);
     legLens = ik.getLegLengths();
 
-    for(int i = 0 ; i < legLens.size() ; i++)
+    if (retFlag != -1)
     {
-        rosPubMsg.data[i] = legLens[i];
+        for(int i = 0 ; i < legLens.size() ; i++)
+        {
+            rosPubMsg.data[i] = legLens[i];
+        }
+    }
+    else
+    {
+        ROS_INFO("BAD MOVE COMMAND");
+        for(int i = 0 ; i < legLens.size() ; i++)
+        {
+            rosPubMsg.data[i] = retFlag;
+        }
     }
     pub.publish(rosPubMsg);
 }

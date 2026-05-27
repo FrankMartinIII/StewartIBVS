@@ -42,6 +42,10 @@ void initStewartPlatform()
         movePlatform(0, 0, 0, 0, 0, 0);
     }
     */
+   if(numFound !=6)
+   {
+        exit(-1);
+   }
    for(int rank = 0 ; rank < numFound ; rank++)
     {
     	//firgelli.WriteCodeToRank(rank, 1, 17);
@@ -65,6 +69,10 @@ void callback(const std_msgs::Float64MultiArray::ConstPtr& msg)
     }
 
     //Check for bad moves that exceed bounds
+    if(commands.at(0) < 0) //If ik_ros_node sends a bad flag in the data
+    {
+        flagBadMove = true;
+    }
     for(int rank = 0; rank < commands.size() ; rank++)
     {
         std::string err;
