@@ -170,6 +170,10 @@ add_library(inverse_kinematics
   src/kinematics.cpp
 )
 
+add_library(hardwareConfig 
+  src/hardwareConfig.cpp
+)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -186,12 +190,15 @@ add_executable(ik_ros_node src/ik_ros_node.cpp)
 add_executable(fk_ros_node src/fk_ros_node.cpp)
 add_executable(stew_driver_node src/stew_driver_node.cpp)
 add_executable(lac_feedback_node src/lac_feedback_node.cpp)
+add_executable(workspacePoseGenerator helpers/workspacePoseGenerator.cpp)
 
 add_executable(testIKClass src/testIKClass.cpp)
 target_link_libraries(camera_setup ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(ibvs ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
 target_link_libraries(ik_ros_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
 target_link_libraries(fk_ros_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES})
+target_link_libraries(workspacePoseGenerator ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen3_LIBRARIES} hardwareConfig)
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -215,6 +222,7 @@ target_link_libraries(firgelli
 target_link_libraries(stew_driver_node
   ${catkin_LIBRARIES}
   firgelli
+  hardwareConfig
 )
 
 target_link_libraries(lac_feedback_node

@@ -5,6 +5,7 @@
 #include<time.h>
 #include "std_msgs/Float64MultiArray.h"
 #include "firgelli.h"
+#include "hardwareConfig.h"
 
 Firgelli firgelli;
 int numFound;
@@ -14,17 +15,6 @@ ros::Publisher pub2; //For debugging leg commands
 std_msgs::Float64MultiArray rosPubMsg;
 std_msgs::Float64MultiArray legCommands;
 
-//Old vals were good for motor one but bounds are inconsistent across motors
-const int minExtensionCommand = 45;
-const int maxExtensionCommand = 950;
-
-int convertLengthToCommand(double length)
-{
-    //int command = (31.91 * (length-121.5)) - 16.01;
-    //int command = ((length - 121.5) / 30) * 1023;
-    int command = ((length - 122.64) / 30) * 1023;
-    return command;
-}
 
 void initStewartPlatform()
 {
@@ -49,7 +39,9 @@ void initStewartPlatform()
    for(int rank = 0 ; rank < numFound ; rank++)
     {
     	//firgelli.WriteCodeToRank(rank, 1, 17);
-        firgelli.WriteCodeToRank(rank, 1, 5);
+        firgelli.WriteCodeToRank(rank, 1, 5); //Accuracy
+        firgelli.WriteCodeToRank(rank, 5, 2500); //Stall time. Will stop moving after x ms of being stuck.
+        //firgelli.WriteCodeToRank(rank, 33, 700); //Set speed of linear actuators
     }
 
 }

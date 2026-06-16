@@ -14,7 +14,7 @@ class IK
         //const int topPlateDegreeVals[6] = {20, 100, 140, 220, 260, 340}; //How many degrees the hole is on the top plate away from the y axis
         const int bottomPlateHoleRadius = 59; //Radius of the plate going through the center of the holes
         const int topPlateHoleRadius = 41;
-        const double maxJointAngle = 20;
+        const double maxJointAngle = 18;
         //const double attachmentPointOffset = 11;
         //const double homeHeight = 135.0413717 + attachmentPointOffset + attachmentPointOffset; //This assumes an extension length of 15 mm for the starting position. The addional 34 is to account for the distance from the pivot to the center of each plate (17mm)
         //const double botAttachmentPointOffset = 20; //Old vals assume center of mass of each plate
@@ -156,7 +156,7 @@ class IK
         double roll_r = roll * M_PI / 180.0;
         double pitch_r = pitch * M_PI / 180.0;
         double yaw_r = yaw * M_PI / 180.0;
-        double z_world = z_p + homeHeight;
+        double z_world = z_p + homeHeight + toolAttachmentOffset; //Need to add the tool offset here also otherwise the platform bottoms out trying to put the tool tip at the homeHeight instead of the top plate.
 
         // Build rotation matrix (ZYX: yaw, pitch, roll)
         R_mat = Eigen::AngleAxisd(yaw_r, Eigen::Vector3d::UnitZ()) *

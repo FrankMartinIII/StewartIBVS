@@ -22,7 +22,7 @@ void callback(const geometry_msgs::Twist::ConstPtr& msg)
     double roll = msg->angular.x;
     double pitch = msg->angular.y;
     double yaw = msg->angular.z;
-    int retFlag = ik.inverseKinematics(xtrans, ytrans, ztrans, roll, pitch, yaw);
+    int retFlag = ik.inverseKinematicsToolOffset(xtrans, ytrans, ztrans, roll, pitch, yaw);
     legLens = ik.getLegLengths();
 
     if (retFlag != -1)
