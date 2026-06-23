@@ -1,0 +1,3 @@
+Bad pose
+[INFO] [1782234245.223897]: Publishing commanded pose: [-11.2413, -9.38898, 6.64046, -1.04109, -0.812212, 0.0]
+Takes 13 min to run

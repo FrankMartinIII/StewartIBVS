@@ -10,10 +10,11 @@
 int main()
 {
     IK platform;
-    float xyRangeDifferential = 15.0; //15 mm radius
-    float zRangePos = 14.0;
+    float xyRangeDifferential = 13.0; //13 mm radius
+    float zRangePos = 13.2;
     float zRangeNeg = -14.0;
-    float rollRange = 10.0;
+    float rollRangePos = 10.0;
+    float rollRangeNeg = -5;
     float pitchRange = 10.0;
 
     //Open file
@@ -27,7 +28,7 @@ int main()
 
     std::uniform_real_distribution<> xyTranslationDist(-xyRangeDifferential, xyRangeDifferential);
     std::uniform_real_distribution<> zTranslationDist(zRangeNeg, zRangePos);
-    std::uniform_real_distribution<> rollRotationDist(-rollRange, rollRange);
+    std::uniform_real_distribution<> rollRotationDist(rollRangeNeg, rollRangePos);
     std::uniform_real_distribution<> pitchRotationDist(-pitchRange, pitchRange);
 
     int targetPoseCount = 100;

@@ -133,12 +133,23 @@ class PoseLogger:
             #These will hold the most recent rvec and tvec for this command
             #The point of this delay code is to give the robot time to move into position
 
-            start_time = time.time()
-            while time.time() - start_time < self.wait_time and not rospy.is_shutdown():
-                rate.sleep()
+            #start_time = time.time()
+            #while time.time() - start_time < self.wait_time and not rospy.is_shutdown():
+            #    rate.sleep()
+            rospy.sleep(self.wait_time)
             #Once this is over, we should be safe to get leg lengths and start logging
 
+
+            # Calculate how old the camera data is
+            data_age = rospy.Time.now() - self.charuco_most_recent_time
+            
+            # If the data is older than 0.5 seconds, the camera lost tracking!
+            if data_age.to_sec() > 0.5:
+                rospy.logwarn(f"Stale Charuco data! Skipping pose: {cmd}")
+                continue # Skip logging this row and move to the next command
+
             #Log and append to csv
+            
             
             with open(self.log_file, "a") as f:
                 row = cmd + self.charuco_tvecs_buffer.tolist() + self.charuco_rvecs_buffer.tolist() + self.most_recent_leg_commands.tolist() + self.most_recent_leg_feedback.tolist() + self.charuco_relative_pose_in_world_coords.tolist() + self.charuco_starting_pose_in_world_coords.tolist() + [pub_time, self.charuco_most_recent_time]
@@ -151,7 +162,7 @@ if __name__ == "__main__":
     rospack = rospkg.RosPack()
     # Get the path to your package
     package_path = rospack.get_path('vs_stewart')
-    commands_file_path = os.path.join(package_path, 'data', 'commands.txt')
+    commands_file_path = os.path.join(package_path, 'data', 'calibration_poses_list.txt')
     return_file_path = os.path.join(package_path, 'data', 'calib_log2.csv')
     cmd_file = rospy.get_param("~cmd_file", commands_file_path)
     wait_time = rospy.get_param("~wait_time", 6.0) #seconds

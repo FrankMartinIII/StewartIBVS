@@ -252,6 +252,10 @@ catkin_install_python(PROGRAMS src/publish_and_log_pose.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(PROGRAMS src/publish_and_log_data.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 catkin_install_python(PROGRAMS src/pose_tracking_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
